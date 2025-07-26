@@ -88,9 +88,7 @@ class Base:
             spender=spender,
             amount=amount
         )
-        # push = await self.push_tx(
-        #     tx_params=tx
-        # )
+
         receipt = await tx.wait_for_receipt(client=self.client, timeout=300)
         if receipt:
             return True
@@ -113,31 +111,6 @@ class Base:
             print(params[:64])
             params = params[64:]
 
-    @staticmethod
-    def get_eth_amount_for_swap():
-        settings = Settings()
-        return TokenAmount(
-            amount=randfloat(
-                from_=settings.eth_amount_for_swap.from_,
-                to_=settings.eth_amount_for_swap.to_,
-                step=0.0000001
-            )
-        )
-
-    @staticmethod
-    def get_eth_amount_for_bridge():
-        settings = Settings()
-        return TokenAmount(
-            amount=randfloat(
-                from_=settings.eth_amount_for_bridge.from_,
-                to_=settings.eth_amount_for_bridge.to_,
-                step=0.0000001)
-        )
-
-    def get_session(self):
-        #if self.client.proxy:
-        #    return ProxyConnector.from_url(self.client.proxy)
-        return None
 
     async def sign_message(
             self,
@@ -195,27 +168,8 @@ class Base:
                     return False
                 await asyncio.sleep(3)
 
-    async def get_usd_gas(self, data, tx):
-        eth_price = await self.get_token_price('ETH')
-
-        contract = await self.client.contracts.get(contract_address=Contracts.OracleL1)
-
-        l1_fee = TokenAmount(
-            amount= await contract.functions.getL1Fee(data).call(),
-            wei=True
-            )
-
-        gas_eth = TokenAmount(
-            amount= int(tx['gas']) * (int(tx['maxFeePerGas'])),
-                                      #+ int(tx['maxPriorityFeePerGas'])),
-            wei=True
-        )
-
-        usd_gas_price = float((l1_fee.Ether + gas_eth.Ether)) * eth_price
-
-        return usd_gas_price
-
     async def wrap_eth(self, amount: TokenAmount = None):
+
             success_text = f'BASE | Wrap ETH | Success | {amount.Ether:.5f} ETH'
             failed_text = f'BASE | Wrap ETH | Failed | {amount.Ether:.5f} ETH'
 
@@ -244,9 +198,7 @@ class Base:
 
                 return tx_label
 
-
     async def unwrap_eth(self, amount: TokenAmount = None):
-
 
             if self.client.network == Networks.Ethereum:
                 weth =Contracts.WETH_ETHEREUM
@@ -279,33 +231,3 @@ class Base:
             if receipt:
 
                 return tx_label
-
-
-    async def push_tx(self,
-                      tx_params,
-                      success_text: str = None,
-                      failed_text: str = None
-                      ):
-        try:
-            tx = await self.client.transactions.auto_add_params(tx_params=tx_params)
-
-            gas_usd = await self.get_usd_gas(data=tx['data'], tx=tx)
-
-            if gas_usd < self.settings.max_gas_price:
-
-                tx = await self.client.transactions.sign_and_send(tx_params=tx)
-                await asyncio.sleep(random.randint(2, 4))
-                receipt = await tx.wait_for_receipt(client=self.client, timeout=300)
-
-                if receipt:
-                    return f'{success_text} | GAS {gas_usd:.3f} USD'
-
-            else:
-                logger.warning(f'{failed_text} | GAS {gas_usd:.3f} | More than min_gas: '
-                               f'{self.settings.max_gas_price:.3f} USD')
-
-                return f'{failed_text}'
-
-        except Exception as e:
-
-            return f'{failed_text} | Error: {e}'
