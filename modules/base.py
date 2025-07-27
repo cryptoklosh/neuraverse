@@ -13,21 +13,20 @@ from libs.eth_async.data.models import TokenAmount, TxArgs, Networks
 from libs.eth_async.utils.utils import randfloat
 
 from data.models import Settings, Contracts
-from modules.browser import BaseAsyncSession
+from modules.browser import BaseAsyncSession, Browser
 from utils.db_api.models import Wallet
 from utils.logs_decorator import controller_log
 
 
 class Base:
     __module__ = 'Web3 Base'
-    def __init__(self, client: Client, async_session: BaseAsyncSession, wallet: Wallet):
-        self.client = client
-        self.settings = Settings()
-        self.wallet = wallet
-        self.session: BaseAsyncSession = async_session
+    def __init__(self, client: Client, wallet: Wallet):
+        self.client: Client = client
+        self.wallet: Wallet = wallet
+        self.browser: Browser = Browser(wallet=self.wallet)
+        #todo settings
 
-    @staticmethod
-    async def get_token_price(token_symbol='ETH', second_token: str = 'USDT') -> float | None:
+    async def get_token_price(self, token_symbol='ETH', second_token: str = 'USDT') -> float | None:
         token_symbol, second_token = token_symbol.upper(), second_token.upper()
 
         if token_symbol.upper() in ('USDC', 'USDC.E', 'USDT', 'DAI', 'CEBUSD', 'BUSD'):
@@ -37,32 +36,17 @@ class Base:
         if token_symbol == 'USDC.E':
             token_symbol = 'USDC'
 
-        if token_symbol == 'KLAY':
-            token_symbol = 'KAIA'
-            # for _ in range(5):
-            #     try:
-            #         async with aiohttp.ClientSession() as session:
-            #             async with session.get(f'https://api.allbit.com/token/v1/klaytn/scope/token/0x0000000000000000000000000000000000000000') as r:
-            #                 if r.status != 200:
-            #                     return None
-            #                 result_dict = await r.json()
-            #                 if 'data' not in result_dict:
-            #                     return None
-            #                 return float(result_dict['data']['currentPrice'])
-            #     except Exception as e:
-            #         await asyncio.sleep(5)
-
         for _ in range(5):
             try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(
-                            f'https://api.binance.com/api/v3/depth?limit=1&symbol={token_symbol}{second_token}') as r:
-                        if r.status != 200:
-                            return None
-                        result_dict = await r.json()
-                        if 'asks' not in result_dict:
-                            return None
-                        return float(result_dict['asks'][0][0])
+                async with self.browser:
+                    r = await self.browser.get(
+                            url = f'https://api.binance.com/api/v3/depth?limit=1&symbol={token_symbol}{second_token}')
+                    if r.status_code != 200:
+                        return None
+                    result_dict = r.json()
+                    if 'asks' not in result_dict:
+                        return None
+                    return float(result_dict['asks'][0][0])
             except Exception as e:
                 await asyncio.sleep(5)
         raise ValueError(f'Can not get {token_symbol + second_token} price from Binance')

@@ -12,6 +12,7 @@ from data.config import FILES_DIR
 
 from libs.eth_async.client import Client
 from libs.eth_async.data.models import Networks
+from libs.eth_async.utils.files import touch
 from utils.db_api.wallet_api import get_wallet, db
 from utils.db_api.models import Wallet
 from utils.encryption import get_private_key
@@ -21,30 +22,32 @@ class Import:
 
     @staticmethod
     def _read_lines(path: str) -> List[str]:
-        file_path = os.path.join(FILES_DIR, path)
 
+        file_path = os.path.join(FILES_DIR, path)
         if not os.path.isfile(file_path):
             return []
-        with open(path, encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             return [line.strip() for line in f if line.strip()]
 
-    def parse_wallet_from_txt(self) -> List[Dict[str, Optional[str]]]:
+    @staticmethod
+    def parse_wallet_from_txt() -> List[Dict[str, Optional[str]]]:
 
-        private_keys   = self._read_lines("privatekeys.txt")
-        proxies        = self._read_lines("proxy.txt")
-        twitter_tokens = self._read_lines("twitter_tokens.txt")
-        discord_tokens = self._read_lines("discrod_tokens.txt")
+        private_keys   = Import._read_lines("privatekeys.txt")
+        proxies        = Import._read_lines("proxy.txt")
+        twitter_tokens = Import._read_lines("twitter_tokens.txt")
+        discord_tokens = Import._read_lines("discord_tokens.txt")
 
         if not private_keys or not proxies:
-            raise ValueError("Файлы privatekeys.txt и proxy.txt должны содержать хотя бы одну строку.")
+            raise ValueError("File privatekeys.txt и proxy.txt must contain information")
 
-        record_count = min(len(private_keys), len(proxies))
+        record_count = len(private_keys)
 
         def pick_proxy(i: int) -> Optional[str]:
             if not proxies:
                 return None
             if i < len(proxies):
                 return proxies[i]
+
             return random.choice(proxies)
 
         wallets: List[Dict[str, Optional[str]]] = []
@@ -61,7 +64,7 @@ class Import:
 
     @staticmethod
     async def wallets():
-        raw_wallets = Import.get_wallets_from_txt()
+        raw_wallets = Import.parse_wallet_from_txt()
 
         wallets = [SimpleNamespace(**w) for w in raw_wallets]
 
@@ -90,6 +93,7 @@ class Import:
                 if changed:
                     db.commit()
                     edited.append(wallet_instance)
+
                 continue
 
             if settings.private_key_encryption:
@@ -108,10 +112,10 @@ class Import:
             )
 
             if not wallet_instance.twitter_token:
-                logger.warning(f'')
+                logger.warning(f'{wallet_instance.id} | {wallet_instance.address} | Twitter Token not found, Twitter Action will be skipped')
 
             if not wallet_instance.discord_token:
-                logger.warning(f'')
+                logger.warning(f'{wallet_instance.id} | {wallet_instance.address} | Discord Token not found, Discord Action will be skipped')
 
             db.insert(wallet_instance)
             imported.append(wallet_instance)

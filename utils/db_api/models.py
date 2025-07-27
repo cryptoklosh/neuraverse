@@ -11,12 +11,13 @@ class Wallet(Base):
     __tablename__ = 'wallets'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    e_mail: Mapped[str] = mapped_column(unique=True, index=True)
-    private_key: Mapped[str] = mapped_column()
+    private_key: Mapped[str] = mapped_column(unique=True, index=True)
     address: Mapped[str] = mapped_column()
-    proxy: Mapped[str] = mapped_column(default=None)
+    proxy: Mapped[str] = mapped_column(default=None, nullable=True)
+    discord_token: Mapped[str] = mapped_column(default=None, nullable=True)
+    twitter_token: Mapped[str] = mapped_column(default=None, nullable=True)
     next_activity_action_time: Mapped[datetime | None] = mapped_column(default=None)
 
 
     def __repr__(self):
-        return f'[ID: {self.id}] | [{self.address}]'
+        return f'[wallet_id: {self.id}] | [{self.address}]'

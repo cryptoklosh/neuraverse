@@ -4,6 +4,8 @@
 dev/*
 **/__pycache__/*
 new_wallets.csv
-#files/*
 *.db
 .env
+test_*
+files/*
+files/

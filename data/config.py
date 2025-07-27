@@ -18,5 +18,6 @@ else:
     ROOT_DIR = Path(__file__).parent.parent.absolute()
 
 FILES_DIR = os.path.join(ROOT_DIR, 'files')
+WALLETS_DB = os.path.join(FILES_DIR, 'wallets.db')
 
 CIPHER_SUITE = []
