@@ -15,7 +15,7 @@ import settings
 def get_private_key(wallet: str) -> str | int:
     #settings = Settings
     try:
-        if settings.private_key_encryption:
+        if settings.PRIVATE_KEY_ENCRYPTION:
             return CIPHER_SUITE[0].decrypt(wallet).decode()
         return wallet
 
@@ -27,7 +27,7 @@ def get_private_key(wallet: str) -> str | int:
 def prk_encrypt(wallet: str) -> str | int:
     #settings = Settings()
     try:
-        if settings.private_key_encryption:
+        if settings.PRIVATE_KEY_ENCRYPTION:
             return CIPHER_SUITE[0].encrypt(wallet.encode()).decode()
         return wallet
 

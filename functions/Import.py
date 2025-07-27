@@ -96,7 +96,7 @@ class Import:
 
                 continue
 
-            if settings.private_key_encryption:
+            if settings.PRIVATE_KEY_ENCRYPTION:
                 client = Client(private_key=get_private_key(wl.private_key),
                                 network=Networks.Ethereum)
             else:
