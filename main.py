@@ -7,8 +7,8 @@ from inquirer.themes import GreenPassion
 from rich.console import Console
 from utils.create_files import create_files
 from functions.activity import activity
-from functions.Import import Import
-
+from utils.db_import_export import Import, Export
+from utils.encryption import check_encrypt_param
 
 console = Console()
 
@@ -43,7 +43,9 @@ async def choose_action():
         raise SystemExit(0)
 
     if category == "DB Actions":
-        actions = ["Import wallets to Database", "Back"]
+        actions = ["Import wallets to Database",
+                   "Export wallets to TXT",
+                   "Back"]
 
     if category == PROJECT:
         actions = PROJECT_ACTIONS
@@ -61,7 +63,13 @@ async def choose_action():
 
     if action == "Import wallets to Database":
         console.print(f"[bold blue]Starting Import Wallets to DB[/bold blue]")
+        check_encrypt_param(confirm=True)
         await Import.wallets()
+
+    elif action == "Export wallets to TXT":
+        console.print(f"[bold blue]Starting Import Wallets to DB[/bold blue]")
+        check_encrypt_param()
+        await Export.wallets_to_txt()
 
     elif action == "Start Testing Project":
         await activity(action=1)

@@ -20,4 +20,4 @@ else:
 FILES_DIR = os.path.join(ROOT_DIR, 'files')
 WALLETS_DB = os.path.join(FILES_DIR, 'wallets.db')
 
-CIPHER_SUITE = []
+CIPHER_SUITE = None

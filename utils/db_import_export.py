@@ -13,10 +13,31 @@ from data.config import FILES_DIR
 from libs.eth_async.client import Client
 from libs.eth_async.data.models import Networks
 from libs.eth_async.utils.files import touch
-from utils.db_api.wallet_api import get_wallet, db
+from utils.db_api.wallet_api import db, get_wallet_by_address
 from utils.db_api.models import Wallet
-from utils.encryption import get_private_key
+from utils.encryption import get_private_key, prk_encrypt
 import settings
+
+def remove_line_from_file(value: str, filename: str) -> bool:
+    file_path = os.path.join(FILES_DIR, filename)
+
+    if not os.path.isfile(file_path):
+        return False
+
+    with open(file_path, encoding="utf-8") as f:
+        lines = [line.rstrip("\n") for line in f]
+
+    original_len = len(lines)
+
+    keep = [line for line in lines if line.strip() != value.strip()]
+
+    if len(keep) == original_len:
+        return False
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        for line in keep:
+            f.write(line + "\n")
+    return True
 
 class Import:
 
@@ -73,10 +94,18 @@ class Import:
         total = len(wallets)
 
         for wl in wallets:
-            wallet_instance = get_wallet(private_key=wl.private_key)
+
+            client = Client(private_key=wl.private_key,
+                            network=Networks.Ethereum)
+
+            wallet_instance = get_wallet_by_address(address=client.account.address)
 
             if wallet_instance:
                 changed = False
+
+                if wallet_instance.address == client.account.address:
+                    wallet_instance.private_key = prk_encrypt(wl.private_key)
+                    changed = True
 
                 if wallet_instance.proxy != wl.proxy:
                     wallet_instance.proxy = wl.proxy
@@ -93,23 +122,19 @@ class Import:
                 if changed:
                     db.commit()
                     edited.append(wallet_instance)
+                    remove_line_from_file(wl.private_key, "privatekeys.txt")
 
                 continue
 
-            if settings.PRIVATE_KEY_ENCRYPTION:
-                client = Client(private_key=get_private_key(wl.private_key),
-                                network=Networks.Ethereum)
-            else:
-                client = Client(private_key=wl.private_key,
-                                network=Networks.Ethereum)
-
             wallet_instance = Wallet(
-                private_key=wl.private_key,
+                private_key=prk_encrypt(wl.private_key),
                 address=client.account.address,
                 proxy=wl.proxy,
                 twitter_token=wl.twitter_token,
                 discord_token=wl.discord_token,
             )
+
+            remove_line_from_file(wl.private_key, "privatekeys.txt")
 
             if not wallet_instance.twitter_token:
                 logger.warning(f'{wallet_instance.id} | {wallet_instance.address} | Twitter Token not found, Twitter Action will be skipped')
@@ -124,3 +149,44 @@ class Import:
             f'Done! imported wallets: {len(imported)}/{total}; '
             f'edited wallets: {len(edited)}/{total}; total: {total}'
         )
+
+class Export:
+
+    _FILES = {
+        "private_key":   "exported_privatekeys.txt",
+        "proxy":         "exported_proxy.txt",
+        "twitter_token": "exported_twitter_tokens.txt",
+        "discord_token": "exported_discord_tokens.txt",
+    }
+
+    @staticmethod
+    def _write_lines(filename: str, lines: List[Optional[str]]) -> None:
+
+        path = os.path.join(FILES_DIR, filename)
+        with open(path, "w", encoding="utf-8") as f:
+            for line in lines:
+                f.write((line or "") + "\n")
+
+    @staticmethod
+    async def wallets_to_txt() -> None:
+
+        wallets: List[Wallet] = db.all(Wallet)
+
+        if not wallets:
+            logger.warning("Export: no wallets in db, skip....")
+            return
+
+        buf = {key: [] for key in Export._FILES.keys()}
+
+        for w in wallets:
+            prk = get_private_key(w.private_key) if settings.PRIVATE_KEY_ENCRYPTION else w.private_key
+            buf["private_key"].append(prk)
+
+            buf["proxy"].append(w.proxy or "")
+            buf["twitter_token"].append(w.twitter_token or "")
+            buf["discord_token"].append(w.discord_token or "")
+
+        for field, filename in Export._FILES.items():
+            Export._write_lines(filename, buf[field])
+
+        logger.success(f"Export: exported {len(wallets)} wallets in {FILES_DIR}")

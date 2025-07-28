@@ -1,12 +1,12 @@
 # Whether to encrypt private keys
-PRIVATE_KEY_ENCRYPTION = False   
+PRIVATE_KEY_ENCRYPTION = False
 
 # Number of threads to use for processing wallets
-THREADS = 2
+THREADS = 4
 
 # BY DEFAULT: [] - all wallets
 # Example: [1, 3, 8] -  will run only 1, 3 and 8 wallets
-EXACT_WALLETS_TO_RUN = [1,2]
+EXACT_WALLETS_TO_RUN = []
 
 # Whether to shuffle the list of wallets before processing                      
 SHUFFLE_WALLETS = True      

@@ -11,6 +11,8 @@ from libs.eth_async.data.models import Networks
 from utils.db_api.models import Wallet
 from utils.db_api.wallet_api import db
 from settings import THREADS, SHUFFLE_WALLETS, SLEEP_AFTER_EACH_CYCLE_HOURS, EXACT_WALLETS_TO_RUN
+from utils.encryption import check_encrypt_param
+
 
 async def execute(wallets : Wallet, task_func, timeout_hours : int = 0):
     
@@ -39,6 +41,7 @@ async def execute(wallets : Wallet, task_func, timeout_hours : int = 0):
         
 
 async def activity(action: int):
+    check_encrypt_param()
     all_wallets = db.all(Wallet)
 
     # Filter wallets if EXACT_WALLETS_TO_USE is defined

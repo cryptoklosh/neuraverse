@@ -12,7 +12,7 @@ class Wallet(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     private_key: Mapped[str] = mapped_column(unique=True, index=True)
-    address: Mapped[str] = mapped_column()
+    address: Mapped[str] = mapped_column(unique=True)
     proxy: Mapped[str] = mapped_column(default=None, nullable=True)
     discord_token: Mapped[str] = mapped_column(default=None, nullable=True)
     twitter_token: Mapped[str] = mapped_column(default=None, nullable=True)
