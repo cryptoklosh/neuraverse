@@ -17,9 +17,7 @@ class TestModule(Base):
         self.twitter = TwitterClient(user=wallet)
 
         self.headers = {
-            "Origin": "https://app.testings.Headers",
-            "user-agent": "Mozilla/10050000.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36",
-            "sec-ch-ua-platform" : "Windows"
+            "Origin": "https://app.testings.Headers"
             }
 
     @controller_log("Testing Requests")

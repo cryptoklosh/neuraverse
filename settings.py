@@ -2,7 +2,7 @@
 PRIVATE_KEY_ENCRYPTION = False
 
 # Number of threads to use for processing wallets
-THREADS = 4
+THREADS = 1
 
 # BY DEFAULT: [] - all wallets
 # Example: [1, 3, 8] -  will run only 1, 3 and 8 wallets
