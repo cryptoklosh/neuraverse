@@ -17,13 +17,34 @@ import base64
 import hashlib
 from cryptography.fernet import Fernet
 
-def _derive_fernet_key(password: bytes) -> bytes:
-
-    digest = hashlib.sha256(password).digest()
-    return base64.urlsafe_b64encode(digest)
+from data.config import SALT_PATH
 
 
-def set_cipher_suite(password) -> Fernet:
+def _derive_fernet_key(password: bytes, salt=None) -> bytes:
+
+    try:
+        if salt:
+            kdf = PBKDF2HMAC(
+                algorithm=hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=100000,
+                backend=default_backend()
+            )
+            return base64.urlsafe_b64encode(kdf.derive(password))
+
+        else:
+            digest = hashlib.sha256(password).digest()
+            return base64.urlsafe_b64encode(digest)
+
+    except TypeError:
+        logger.error('Error! Check salt file! Salt must be bites string')
+        sys.exit(1)
+
+
+
+
+def set_cipher_suite(password) -> None:
     if Settings().private_key_encryption:
         cipher = Fernet(_derive_fernet_key(password))
 
@@ -44,7 +65,8 @@ def set_cipher_suite(password) -> Fernet:
 def get_private_key(enc_value: str) -> str:
     try:
         if Settings().private_key_encryption:
-            return config.CIPHER_SUITE.decrypt(enc_value.encode()).decode()
+            if 'gAAAA' in enc_value:
+                return config.CIPHER_SUITE.decrypt(enc_value.encode()).decode()
 
         return enc_value
     except Exception:
@@ -53,7 +75,9 @@ def get_private_key(enc_value: str) -> str:
 
 def prk_encrypt(value: str) -> str:
     if Settings().private_key_encryption:
-        return config.CIPHER_SUITE.encrypt(value.encode()).decode()
+        if '0x' in value:
+            return config.CIPHER_SUITE.encrypt(value.encode()).decode()
+
     return value
 
 def check_encrypt_param(confirm: bool = False, attempts: int = 3):
