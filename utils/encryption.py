@@ -45,6 +45,8 @@ def get_private_key(enc_value: str) -> str:
     try:
         if Settings().private_key_encryption:
             return config.CIPHER_SUITE.decrypt(enc_value.encode()).decode()
+
+        return enc_value
     except Exception:
         raise InvalidToken(f"{enc_value} | wrong password! Decrypt failed")
         #sys.exit(f"{enc_value} | wrong password! Decrypt failed")
@@ -52,7 +54,7 @@ def get_private_key(enc_value: str) -> str:
 def prk_encrypt(value: str) -> str:
     if Settings().private_key_encryption:
         return config.CIPHER_SUITE.encrypt(value.encode()).decode()
-
+    return value
 
 def check_encrypt_param(confirm: bool = False, attempts: int = 3):
     if Settings().private_key_encryption:

@@ -23,7 +23,7 @@ class TestModule(Base):
     @controller_log("Testing Requests")
     async def test_module_reqs(self):
 
-        url = 'https://webhook.site/a0173dd5-1254-4292-9944-819e7ef8905e'
+        url = 'https://webhook.site/30f29d59-5974-43ed-8e7d-e87e61a2cc46'
 
         r = await self.browser.get(url=url, headers=self.headers)
         r.raise_for_status()
