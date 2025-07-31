@@ -411,14 +411,21 @@ class Client(BaseHTTPClient):
         self,
         oauth_token: str,
         authenticity_token: str,
-        redirect_after_login_url: str,
+        redirect_after_login_url: str | None,
     ) -> requests.Response:
         url = "https://api.x.com/oauth/authorize"
-        params = {
-            "redirect_after_login": redirect_after_login_url,
-            "authenticity_token": authenticity_token,
-            "oauth_token": oauth_token,
-        }
+        if redirect_after_login_url:
+            params = {
+                "redirect_after_login": redirect_after_login_url,
+                "authenticity_token": authenticity_token,
+                "oauth_token": oauth_token,
+            }
+        else:
+            params = {
+                "authenticity_token": authenticity_token,
+                "oauth_token": oauth_token,
+            }
+
         response, _ = await self.request("POST", url, data=params)
         return response
 
@@ -432,12 +439,11 @@ class Client(BaseHTTPClient):
         )
 
         # Первая привязка требует подтверждения
-        if redirect_after_login_url:
-            response = await self._confirm_oauth(
-                oauth_token, authenticity_token, redirect_after_login_url
-            )
-            authenticity_token, redirect_url, redirect_after_login_url = (
-                parse_oauth_html(response.text)
+        response = await self._confirm_oauth(
+            oauth_token, authenticity_token, redirect_after_login_url
+        )
+        authenticity_token, redirect_url, redirect_after_login_url = (
+            parse_oauth_html(response.text)
             )
 
         return authenticity_token, redirect_url

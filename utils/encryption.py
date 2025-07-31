@@ -17,34 +17,13 @@ import base64
 import hashlib
 from cryptography.fernet import Fernet
 
-from data.config import SALT_PATH
+def _derive_fernet_key(password: bytes) -> bytes:
+
+    digest = hashlib.sha256(password).digest()
+    return base64.urlsafe_b64encode(digest)
 
 
-def _derive_fernet_key(password: bytes, salt=None) -> bytes:
-
-    try:
-        if salt:
-            kdf = PBKDF2HMAC(
-                algorithm=hashes.SHA256(),
-                length=32,
-                salt=salt,
-                iterations=100000,
-                backend=default_backend()
-            )
-            return base64.urlsafe_b64encode(kdf.derive(password))
-
-        else:
-            digest = hashlib.sha256(password).digest()
-            return base64.urlsafe_b64encode(digest)
-
-    except TypeError:
-        logger.error('Error! Check salt file! Salt must be bites string')
-        sys.exit(1)
-
-
-
-
-def set_cipher_suite(password) -> None:
+def set_cipher_suite(password) -> Fernet:
     if Settings().private_key_encryption:
         cipher = Fernet(_derive_fernet_key(password))
 
@@ -65,20 +44,15 @@ def set_cipher_suite(password) -> None:
 def get_private_key(enc_value: str) -> str:
     try:
         if Settings().private_key_encryption:
-            if 'gAAAA' in enc_value:
-                return config.CIPHER_SUITE.decrypt(enc_value.encode()).decode()
-
-        return enc_value
+            return config.CIPHER_SUITE.decrypt(enc_value.encode()).decode()
     except Exception:
         raise InvalidToken(f"{enc_value} | wrong password! Decrypt failed")
         #sys.exit(f"{enc_value} | wrong password! Decrypt failed")
 
 def prk_encrypt(value: str) -> str:
     if Settings().private_key_encryption:
-        if '0x' in value:
-            return config.CIPHER_SUITE.encrypt(value.encode()).decode()
+        return config.CIPHER_SUITE.encrypt(value.encode()).decode()
 
-    return value
 
 def check_encrypt_param(confirm: bool = False, attempts: int = 3):
     if Settings().private_key_encryption:

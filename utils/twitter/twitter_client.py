@@ -1,4 +1,7 @@
-from typing import Optional, Any, Tuple
+import copy
+import urllib.parse
+from typing import Optional, Any, Tuple, Dict
+from utils.browser import Browser
 from loguru import logger
 import libs.twitter as twitter  
 from libs.twitter.utils import remove_at_sign
@@ -326,4 +329,164 @@ class TwitterClient():
         except Exception as e:
             logger.error(f"{self.user} Error liking tweet: {str(e)}")
             return False
+
+
+
+    async def connect_twitter_to_site_oauth(self, twitter_auth_url:str, api_url: str | None = None):
+        """
+        Connects Twitter to Site using oauth
+
+        Returns:
+            Success status
+        """
+        if not self.twitter_client:
+            logger.error(
+                f"{self.user} Attempt to connect Twitter without client initialization"
+            )
+            raise Exception("Attempt to connect Twitter without client initialization")
+
+        try:
+            browser = Browser(wallet=self.user)
+            logger.debug(f"{self.user} Requesting Twitter authorization parameters")
+
+            parsed_url = urllib.parse.urlparse(twitter_auth_url)
+            query_params = urllib.parse.parse_qs(parsed_url.query)
+
+            # Extract required parameters
+            oauth_token = query_params.get("oauth_token", [""])[0]
+
+            auth_code,redirect_url  = await self.twitter_client.oauth(oauth_token=oauth_token)
+
+            parsed_url = urllib.parse.urlparse(redirect_url)
+            query_params = urllib.parse.parse_qs(parsed_url.query)
+
+            # Extract required parameters
+            oauth_token = query_params.get("oauth_token", [""])[0]
+            oauth_verifer = query_params.get("oauth_verifier", [""])[0]
+
+            params = {
+                "oauth_token": oauth_token,
+                "oauth_verifer": auth_code
+            }
+            callback_url = f"{api_url}?oauth_token={oauth_token}&oauth_verifier={oauth_verifer}"
+            logger.debug(callback_url)
+            if not auth_code:
+                logger.error(
+                    f"{self.user} Failed to obtain authorization code from Twitter"
+                )
+                raise Exception("Not auth code")
+
+
+            callback_headers = {
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                'Accept-Encoding': 'gzip, deflate',
+                'Connection': 'keep-alive',
+                "Referer": "https://x.com/",
+                "Upgrade-Insecure-Requests": "1",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "cross-site",
+            }
+
+            resp = await browser.get(
+                url=api_url,
+                headers=callback_headers,
+                timeout=30,
+                params=params
+            )
+            return resp 
+
+        except Exception as e:
+            logger.error(f"{self.user} Error connecting Twitter: {str(e)}")
+            return None 
+
+    async def connect_twitter_to_site_oauth2(self, twitter_auth_url:str, api_url: str | None = None, json_template: dict | None = None, additional_headers: dict | None = None):
+        """
+        Connects Twitter to Site using oauth2
+
+        Returns:
+            Response 
+        """
+        if not self.twitter_client:
+            logger.error(
+                f"{self.user} Attempt to connect Twitter without client initialization"
+            )
+            raise Exception("Attempt to connect Twitter without client initialization")
+
+        try:
+            browser = Browser(wallet=self.user)
+            logger.debug(f"{self.user} Requesting Twitter authorization parameters")
+
+            parsed_url = urllib.parse.urlparse(twitter_auth_url)
+            query_params = urllib.parse.parse_qs(parsed_url.query)
+
+            state = query_params.get("state", [""])[0]
+            code_challenge = query_params.get("code_challenge", [""])[0]
+            client_id = query_params.get(
+                "client_id", [""]
+            )[0]
+            redirect_uri = query_params.get(
+                "redirect_uri",
+                [""],
+            )[0]
+            response_type = query_params.get("response_type", [""])[0]
+            scope = query_params.get("scope", [""])[0]
+            code_challenge_method = query_params.get("code_challenge_method", [""])[0]
+
+            if not state or not code_challenge:
+                raise Exception("Failed to extract parameters from authorization URL")
+
+            oauth2_data = {
+                "response_type": response_type,
+                "client_id": client_id,
+                "redirect_uri": redirect_uri,
+                "scope": scope,
+                "state": state,
+                "code_challenge": code_challenge,
+                "code_challenge_method": code_challenge_method
+            }
+
+            auth_code = await self.twitter_client.oauth2(**oauth2_data)
+
+            if not auth_code:
+                logger.error(
+                    f"{self.user} Failed to obtain authorization code from Twitter"
+                )
+                raise Exception("Not auth code")
+
+            callback_url = f"{redirect_uri}?state={state}&code={auth_code}"
+
+            callback_headers = {
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                'Accept-Encoding': 'gzip, deflate',
+                "Referer": "https://x.com/",
+                "Upgrade-Insecure-Requests": "1",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "cross-site",
+            }
+
+            resp = await browser.get(
+                url=callback_url,
+                headers=callback_headers,
+            )
+            if not api_url:
+                return resp 
+
+            json_data = await self._replace_placeholders(obj=json_template, state=state, auth_code=auth_code)
+            resp = await browser.post(url=api_url, json=json_data, headers=additional_headers)
+            return resp
+
+        except Exception as e:
+            logger.error(f"{self.user} Error connecting Twitter: {str(e)}")
+            return None 
+
+    async def _replace_placeholders(self, obj, state, auth_code):
+                if isinstance(obj, dict):
+                    return {k: await self._replace_placeholders(v, state, auth_code) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [await self._replace_placeholders(item, state, auth_code) for item in obj]
+                elif isinstance(obj, str):
+                    return obj.replace("{{state}}", state).replace("{{auth_code}}", auth_code)
+                return obj
 
