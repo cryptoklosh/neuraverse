@@ -332,12 +332,12 @@ class TwitterClient():
 
 
 
-    async def connect_twitter_to_site_oauth(self, twitter_auth_url:str, api_url: str | None = None):
+    async def connect_twitter_to_site_oauth(self, twitter_auth_url:str):
         """
         Connects Twitter to Site using oauth
 
         Returns:
-            Success status
+            Oauth token, Oauth verifier token, callback response
         """
         if not self.twitter_client:
             logger.error(
@@ -357,6 +357,12 @@ class TwitterClient():
 
             auth_code,redirect_url  = await self.twitter_client.oauth(oauth_token=oauth_token)
 
+            if not auth_code:
+                logger.error(
+                    f"{self.user} Failed to obtain authorization code from Twitter"
+                )
+                raise Exception("Not auth code")
+
             parsed_url = urllib.parse.urlparse(redirect_url)
             query_params = urllib.parse.parse_qs(parsed_url.query)
 
@@ -364,17 +370,7 @@ class TwitterClient():
             oauth_token = query_params.get("oauth_token", [""])[0]
             oauth_verifer = query_params.get("oauth_verifier", [""])[0]
 
-            params = {
-                "oauth_token": oauth_token,
-                "oauth_verifer": auth_code
-            }
-            callback_url = f"{api_url}?oauth_token={oauth_token}&oauth_verifier={oauth_verifer}"
-            logger.debug(callback_url)
-            if not auth_code:
-                logger.error(
-                    f"{self.user} Failed to obtain authorization code from Twitter"
-                )
-                raise Exception("Not auth code")
+            logger.debug(redirect_url)
 
 
             callback_headers = {
@@ -389,23 +385,22 @@ class TwitterClient():
             }
 
             resp = await browser.get(
-                url=api_url,
+                url=redirect_url,
                 headers=callback_headers,
                 timeout=30,
-                params=params
             )
-            return resp 
+            return oauth_token, oauth_verifer, resp 
 
         except Exception as e:
             logger.error(f"{self.user} Error connecting Twitter: {str(e)}")
-            return None 
+            return None, None, None
 
-    async def connect_twitter_to_site_oauth2(self, twitter_auth_url:str, api_url: str | None = None, json_template: dict | None = None, additional_headers: dict | None = None):
+    async def connect_twitter_to_site_oauth2(self, twitter_auth_url:str):
         """
         Connects Twitter to Site using oauth2
 
         Returns:
-            Response 
+            Auth Token, State, Callback response
         """
         if not self.twitter_client:
             logger.error(
@@ -470,16 +465,11 @@ class TwitterClient():
                 url=callback_url,
                 headers=callback_headers,
             )
-            if not api_url:
-                return resp 
-
-            json_data = await self._replace_placeholders(obj=json_template, state=state, auth_code=auth_code)
-            resp = await browser.post(url=api_url, json=json_data, headers=additional_headers)
-            return resp
+            return auth_code, state, resp
 
         except Exception as e:
             logger.error(f"{self.user} Error connecting Twitter: {str(e)}")
-            return None 
+            return None, None, None
 
     async def _replace_placeholders(self, obj, state, auth_code):
                 if isinstance(obj, dict):
