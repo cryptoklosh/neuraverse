@@ -64,6 +64,11 @@ class TestModule(Base):
         return 
 
     @controller_log("Testing Twitter")
+    async def twitter_test_reply(self):
+        await self.twitter.reply(tweet_id=1951217370959053017, reply_text="This is amazing!")
+        return 
+
+    @controller_log("Testing Twitter")
     async def twitter_test_auth(self):
         await self.connect_pharos()
         # await self.connect_somnia()
