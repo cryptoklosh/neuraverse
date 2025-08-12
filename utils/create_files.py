@@ -6,7 +6,7 @@ from ruamel.yaml.comments import CommentedMap
 from copy import deepcopy
 
 REQUIRED_FILES = [
-    "privatekeys.txt",
+    "private_keys.txt",
     "proxy.txt",
     "twitter_tokens.txt",
     "discord_tokens.txt",

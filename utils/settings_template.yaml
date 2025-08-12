@@ -13,6 +13,12 @@ exact_wallets_to_run: []
 # Whether to shuffle the list of wallets before processing
 shuffle_wallets: true
 
+# Hide wallet address in logs
+hide_wallet_address_log: true
+
+# the log level for the application. Options: DEBUG, INFO, WARNING, ERROR
+log_level : INFO
+
 # Sleep time in hours after full execution of tasks
 sleep_after_each_cycle_hours: 0
 

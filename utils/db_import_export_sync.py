@@ -57,27 +57,26 @@ def remove_line_from_file(value: str, filename: str) -> bool:
             f.write(line + "\n")
     return True
 
+def read_lines(path: str) -> List[str]:
+
+    file_path = os.path.join(FILES_DIR, path)
+    if not os.path.isfile(file_path):
+        return []
+    with open(file_path, encoding="utf-8") as f:
+        return [line.strip() for line in f if line.strip()]
+    
 class Import:
-
-    @staticmethod
-    def _read_lines(path: str) -> List[str]:
-
-        file_path = os.path.join(FILES_DIR, path)
-        if not os.path.isfile(file_path):
-            return []
-        with open(file_path, encoding="utf-8") as f:
-            return [line.strip() for line in f if line.strip()]
 
     @staticmethod
     def parse_wallet_from_txt() -> List[Dict[str, Optional[str]]]:
 
-        private_keys   = Import._read_lines("privatekeys.txt")
-        proxies        = Import._read_lines("proxy.txt")
-        twitter_tokens = Import._read_lines("twitter_tokens.txt")
-        discord_tokens = Import._read_lines("discord_tokens.txt")
+        private_keys   = read_lines("private_keys.txt")
+        proxies        = read_lines("proxy.txt")
+        twitter_tokens = read_lines("twitter_tokens.txt")
+        discord_tokens = read_lines("discord_tokens.txt")
 
         if not private_keys or not proxies:
-            raise ValueError("File privatekeys.txt и proxy.txt must contain information")
+            raise ValueError("File private_keys.txt и proxy.txt must contain information")
 
         record_count = len(private_keys)
 
@@ -153,7 +152,7 @@ class Import:
                 if changed:
                     db.commit()
                     edited.append(wallet_instance)
-                    remove_line_from_file(wl.private_key, "privatekeys.txt")
+                    remove_line_from_file(wl.private_key, "private_keys.txt")
 
                 continue
 
@@ -165,7 +164,7 @@ class Import:
                 discord_token=wl.discord_token,
             )
 
-            remove_line_from_file(wl.private_key, "privatekeys.txt")
+            remove_line_from_file(wl.private_key, "private_keys.txt")
 
             if not wallet_instance.twitter_token:
                 logger.warning(f'{wallet_instance.id} | {wallet_instance.address} | Twitter Token not found, Twitter Action will be skipped')
@@ -181,10 +180,97 @@ class Import:
             f'edited wallets: {len(edited)}/{total}; total: {total}'
         )
 
+       
+    
+class Sync:
+    
+    @staticmethod
+    def parse_tokens_and_proxies_from_txt() -> List[Dict[str, Optional[str]]]:
+
+        proxies        = read_lines("proxy.txt")
+        twitter_tokens = read_lines("twitter_tokens.txt")
+        discord_tokens = read_lines("discord_tokens.txt")
+        
+        record_count = max(len(twitter_tokens), len(discord_tokens))
+
+        def pick_proxy(i: int) -> Optional[str]:
+            if not proxies:
+                return None
+            if i < len(proxies):
+                return proxies[i % len(proxies)]
+
+            return random.choice(proxies)
+
+        wallets: List[Dict[str, Optional[str]]] = []
+        for i in range(record_count):
+            wallets.append({
+                "proxy": parse_proxy(pick_proxy(i)),
+                "twitter_token": twitter_tokens[i] if i < len(twitter_tokens) else None,
+                "discord_token": discord_tokens[i] if i < len(discord_tokens) else None,
+            })
+
+        return wallets
+    
+
+    @staticmethod
+    async def sync_wallets_with_tokens_and_proxies():
+       
+        wallet_auxiliary_data_raw  = Sync.parse_tokens_and_proxies_from_txt()
+
+        wallet_auxiliary_data = [SimpleNamespace(**w) for w in wallet_auxiliary_data_raw]
+          
+        wallets = db.all(Wallet)
+
+ 
+        if len(wallet_auxiliary_data) != len(wallets):
+            logger.warning("Mismatch between wallet data and tokens/proxies data. Exiting sync.")
+            return
+        
+        if len(wallets) <= 0:
+            logger.warning("No wallets in DB, nothing to update")
+            return
+        
+        total = len(wallets)
+
+        logger.info(f"Start syncing wallets: {total}")
+        
+        edited: list[Wallet] = []
+        for wl in wallets:
+
+            decoded_private_key = get_private_key(wl.private_key)
+
+            client = Client(private_key=decoded_private_key,
+                            network=Networks.Ethereum)
+
+            wallet_instance = get_wallet_by_address(address=client.account.address)
+
+            if wallet_instance:
+                changed = False
+
+                wallet_data  = wallet_auxiliary_data [wallet_instance.id - 1]
+                if wallet_instance.proxy != wallet_data.proxy:
+                    wallet_instance.proxy = wallet_data.proxy
+                    changed = True
+
+                if hasattr(wallet_instance, "twitter_token") and wallet_instance.twitter_token != wallet_data.twitter_token:
+                    wallet_instance.twitter_token = wallet_data.twitter_token
+                    changed = True
+
+                if hasattr(wallet_instance, "discord_token") and wallet_instance.discord_token != wallet_data.discord_token:
+                    wallet_instance.discord_token = wallet_data.discord_token
+                    changed = True
+
+                if changed:
+                    db.commit()
+                    edited.append(wallet_instance)
+
+
+        logger.success(f'Done! edited wallets: {len(edited)}/{total}; total: {total}')
+        
 class Export:
 
     _FILES = {
-        "private_key":   "exported_privatekeys.txt",
+        "private_key":   "exported_private_keys.txt",
         "proxy":         "exported_proxy.txt",
         "twitter_token": "exported_twitter_tokens.txt",
         "discord_token": "exported_discord_tokens.txt",

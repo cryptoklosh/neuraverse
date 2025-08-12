@@ -7,7 +7,7 @@ from inquirer import themes
 from rich.console import Console
 from utils.create_files import create_files
 from functions.activity import activity
-from utils.db_import_export import Import, Export
+from utils.db_import_export_sync import Import, Export
 from utils.encryption import check_encrypt_param
 from utils.output import show_channel_info
 
