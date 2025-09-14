@@ -10,10 +10,12 @@ from functions.activity import activity
 from utils.db_import_export_sync import Import, Export, Sync
 from utils.output import show_channel_info
 from utils.git_version import check_for_updates
+from data.constants import PROJECT_NAME
+import utils.db_api.migrate  
 
 console = Console()
 
-PROJECT = 'Base Acrhitecture'
+ 
 
 PROJECT_ACTIONS =   [
                     "Start Testing Project",
@@ -35,7 +37,7 @@ async def choose_action():
             message=Fore.LIGHTBLACK_EX + 'Choose action',
             choices=[
                 "DB Actions",
-                PROJECT,
+                PROJECT_NAME,
                 "Utils",
                 "Exit"
             ],
@@ -46,7 +48,7 @@ async def choose_action():
     category = answers.get("category")
 
     if category == "Exit":
-        console.print(f"[bold red]Exiting {PROJECT}...[/bold red]")
+        console.print(f"[bold red]Exiting {PROJECT_NAME}...[/bold red]")
         raise SystemExit(0)
 
     if category == "DB Actions":
@@ -55,7 +57,7 @@ async def choose_action():
                    "Export wallets to TXT",
                    "Back"]
 
-    if category == PROJECT:
+    if category == PROJECT_NAME:
         actions = PROJECT_ACTIONS
 
     if category == 'Utils':
@@ -102,7 +104,7 @@ async def choose_action():
             console.print("Files folder success reset")
 
     elif action == "Exit":
-        console.print(f"[bold red]Exiting {PROJECT}...[/bold red]")
+        console.print(f"[bold red]Exiting {PROJECT_NAME}...[/bold red]")
         raise SystemExit(0)
 
     await choose_action()
@@ -110,12 +112,12 @@ async def choose_action():
 async def main():
     create_files()
 
-    await check_for_updates(repo_name=PROJECT)
+    await check_for_updates(repo_name=PROJECT_NAME)
     await choose_action()
 
 if __name__ == '__main__':
     
-    show_channel_info(PROJECT)
+    show_channel_info(PROJECT_NAME)
     
     if platform.system() == "Windows":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
