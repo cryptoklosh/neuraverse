@@ -3,13 +3,22 @@ import asyncio
 from libs.twitter.base import BaseAsyncSession
 
 
-async def create_bestcaptcha_task(async_session: BaseAsyncSession, access_token, site_key, page_url, proxy=None, proxy_type="HTTP", payload=None, domain=None):
+async def create_bestcaptcha_task(
+    async_session: BaseAsyncSession,
+    access_token,
+    site_key,
+    page_url,
+    proxy=None,
+    proxy_type="HTTP",
+    payload=None,
+    domain=None,
+):
     url = "https://bcsapi.xyz/api/captcha/hcaptcha"
     request_payload = {
         "access_token": access_token,
         "page_url": page_url,
         "site_key": site_key,
-        "user_agent": async_session.user_agent
+        "user_agent": async_session.user_agent,
     }
 
     # Добавляем необязательные параметры, если они указаны

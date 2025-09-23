@@ -1,25 +1,17 @@
-
 import asyncio
-import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from curl_cffi.requests import AsyncSession
-from web3.constants import ADDRESS_ZERO
-
-import settings
-from utils.db_api.models import Wallet
-
 from loguru import logger
+
+from data.settings import settings
+from utils.db_api.models import Wallet
 
 
 class SolviumCaptchaSolver:
-
     BASE_URL = "https://captcha.solvium.io/api/v1/task"
 
-    def __init__(
-        self,
-        wallet: Wallet
-    ) -> None:
+    def __init__(self, wallet: Wallet) -> None:
         self.api_key = settings.solvium_api_key
         self.wallet = wallet
         self.timeout = 5
@@ -27,20 +19,14 @@ class SolviumCaptchaSolver:
         self.headers = {"authorization": f"Bearer {self.api_key}"}
 
     async def _create_task(self) -> int:
-
         params: Dict[str, Any] = {
             "url": "https://klokapp.ai/",
             "sitekey": "0x4AAAAAABdQypM3HkDQTuaO",
         }
 
-        headers = {"authorization": f"Bearer {self.api_key}"}
-
         async with AsyncSession() as session:
             r = await session.get(
-                url = f"{self.BASE_URL}/turnstile",
-                params=params,
-                proxy=self.wallet.proxy,
-                headers=self.headers
+                url=f"{self.BASE_URL}/turnstile", params=params, proxy=self.wallet.proxy, headers=self.headers
             )
 
             data = r.json()
@@ -57,18 +43,11 @@ class SolviumCaptchaSolver:
         task_id = await self._create_task()
         print(task_id)
 
-
         status_url = f"{self.BASE_URL}/status/{task_id}"
 
         for attempt in range(1, self.max_attempts + 1):
-
             async with AsyncSession() as session:
-
-                r = await session.get(
-                    url = status_url,
-                    headers=self.headers,
-                    proxy=self.wallet.proxy
-                )
+                r = await session.get(url=status_url, headers=self.headers, proxy=self.wallet.proxy)
 
                 data = r.json()
                 print(data)
@@ -94,17 +73,16 @@ class SolviumCaptchaSolver:
 
         raise TimeoutError("Captcha solving timed out")
 
+
 class CapsolverClient:
     BASE_URL = "https://api.capsolver.com"
     CREATE_TASK = "/createTask"
     GET_RESULT = "/getTaskResult"
     POLL_DELAY = 5  # секунд между опросами результата
 
-    def __init__(self,
-                 api_key: str = settings.capsolver,
-                 proxy: str | None = None,
-                 wallet: Wallet = None,
-                 max_attempts: int = 5):
+    def __init__(
+        self, api_key: str = settings.capsolver, proxy: str | None = None, wallet: Wallet = None, max_attempts: int = 5
+    ):
         self.api_key = api_key
         self.proxy = proxy
         self.max_attempts = max_attempts
@@ -116,7 +94,7 @@ class CapsolverClient:
     async def solve_turnstile(
         self,
         website_url: str = "https://klokapp.ai",
-        sitekey: str = '0x4AAAAAABdQypM3HkDQTuaO',
+        sitekey: str = "0x4AAAAAABdQypM3HkDQTuaO",
         action: str = "",
     ) -> str:
         """Возвращает токен Cloudflare Turnstile или бросает исключение."""
@@ -146,9 +124,7 @@ class CapsolverClient:
                 return token  # если дошли сюда — получили токен
 
             except Exception as exc:
-                logger.warning(
-                    "Попытка {}/{} не удалась: {}", attempt, self.max_attempts, exc
-                )
+                logger.warning("Попытка {}/{} не удалась: {}", attempt, self.max_attempts, exc)
                 await asyncio.sleep(self.POLL_DELAY)
 
         raise RuntimeError(f"{self}: все попытки исчерпаны")
@@ -174,6 +150,8 @@ class CapsolverClient:
                     raise RuntimeError(f"{self} CapSolver вернул ошибку: {data}")
 
             await asyncio.sleep(self.POLL_DELAY)
+
+
 #
 # async def capsolver():
 #     attempt = 0
@@ -233,22 +211,22 @@ class CapsolverClient:
 #             logger.error(e)
 #             continue
 
-    #res = requests.post("https://api.capsolver.com/createTask", json=payload)
-    # resp = res.json()
-    # task_id = resp.get("taskId")
-    # if not task_id:
-    #     print("Failed to create task:", res.text)
-    #     return
-    # print(f"Got taskId: {task_id} / Getting result...")
-    #
-    # while True:
-    #     #time.sleep(1)  # delay
-    #     payload = {"clientKey": api_key, "taskId": task_id}
-    #     #res = requests.post("https://api.capsolver.com/getTaskResult", json=payload)
-    #     #resp = res.json()
-    #     status = resp.get("status")
-    #     if status == "ready":
-    #         return resp.get("solution", {}).get('token')
-    #     if status == "failed" or resp.get("errorId"):
-    #         print("Solve failed! response:", res.text)
-    #         return
+# res = requests.post("https://api.capsolver.com/createTask", json=payload)
+# resp = res.json()
+# task_id = resp.get("taskId")
+# if not task_id:
+#     print("Failed to create task:", res.text)
+#     return
+# print(f"Got taskId: {task_id} / Getting result...")
+#
+# while True:
+#     #time.sleep(1)  # delay
+#     payload = {"clientKey": api_key, "taskId": task_id}
+#     #res = requests.post("https://api.capsolver.com/getTaskResult", json=payload)
+#     #resp = res.json()
+#     status = resp.get("status")
+#     if status == "ready":
+#         return resp.get("solution", {}).get('token')
+#     if status == "failed" or resp.get("errorId"):
+#         print("Solve failed! response:", res.text)
+#         return

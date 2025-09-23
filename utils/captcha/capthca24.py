@@ -3,7 +3,9 @@ import asyncio
 from libs.twitter.base import BaseAsyncSession
 
 
-async def create_24captch_task(async_session: BaseAsyncSession, api_key, site_key, page_url, proxy, proxy_type, rq_data='', enterprise=False):
+async def create_24captch_task(
+    async_session: BaseAsyncSession, api_key, site_key, page_url, proxy, proxy_type, rq_data="", enterprise=False
+):
     url = "https://24captcha.online/in.php"
     payload = {
         "key": api_key,
@@ -14,11 +16,11 @@ async def create_24captch_task(async_session: BaseAsyncSession, api_key, site_ke
         "proxy": proxy,
         "proxytype": proxy_type,
     }
-    
+
     if rq_data:
-        payload['rq_data'] = rq_data
+        payload["rq_data"] = rq_data
     if enterprise:
-        payload['enterprise'] = enterprise
+        payload["enterprise"] = enterprise
 
     response = await async_session.post(url=url, json=payload)
     if response.status_code == 200:
@@ -26,20 +28,15 @@ async def create_24captch_task(async_session: BaseAsyncSession, api_key, site_ke
         if data.get("status") == 1:
             return True, data.get("request")
         else:
-            return False, data.get('error_text')
+            return False, data.get("error_text")
     else:
         return False, f"Failed to create task: HTTP {response.status_code}"
 
 
 async def get_24captcha_task_result(async_session: BaseAsyncSession, api_key, task_id):
     url = "https://24captcha.online/res.php"
-    payload = {
-        "key": api_key,
-        "action": "get",
-        "id": task_id,
-        "json": 1
-    }
-    
+    payload = {"key": api_key, "action": "get", "id": task_id, "json": 1}
+
     while True:
         response = await async_session.post(url=url, json=payload)
         if response.status_code == 200:
@@ -47,8 +44,8 @@ async def get_24captcha_task_result(async_session: BaseAsyncSession, api_key, ta
             if data.get("status") == 1:
                 return True, data.get("request")
             elif data.get("request") == "CAPCHA_NOT_READY":
-                await asyncio.sleep(10) 
+                await asyncio.sleep(10)
             else:
-                return False, data.get('request')
+                return False, data.get("request")
         else:
             return False, f"Failed to get task result: HTTP {response.status_code}"
