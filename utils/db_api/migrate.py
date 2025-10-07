@@ -1,4 +1,7 @@
 from utils.db_api.db import DB
+from utils.db_api.models import Wallet
 
-db = DB("sqlite:///files/wallets.db")
-db.add_column_to_table("wallets", "twitter_status", "VARCHAR", "OK")
+
+def migrate():
+    db = DB("sqlite:///files/wallets.db")
+    db.ensure_model_columns(model=Wallet)

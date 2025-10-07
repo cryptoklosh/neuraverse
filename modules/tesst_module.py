@@ -52,14 +52,15 @@ class TestModule(Base):
 
     @controller_log("Testing Twitter")
     async def twitter_test_retweet(self):
-        await self.twitter.retweet(tweet_id=1951217370959053017)
+        retweet = await self.twitter.retweet(tweet_id=1975069327050318030)
+        retweet = await self.twitter.retweet(tweet_id=1975069327050318030)
         return
 
     @controller_log("Testing Twitter")
     async def twitter_test_post(self):
-        await self.twitter.post_tweet(text="Hello World!")
+        post_tweet = await self.twitter.post_tweet(text="Hello This World!")
         await asyncio.sleep(5)
-        await self.twitter.post_tweet(text="Hello World!")
+        post_tweet = await self.twitter.post_tweet(text="Hello This World!")
         return
 
     @controller_log("Testing Twitter")

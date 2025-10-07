@@ -1,9 +1,7 @@
 RPC_MAP = {
     "ethereum": "https://0xrpc.io/eth",
-    "base": "https://0xrpc.io/base",
-    "base": "https://rpc.therpc.io/base",
+    "base": "https://base.drpc.org",
     "optimism": "https://0xrpc.io/op",
-    "optimism": "https://rpc.therpc.io/optimism",
     "arbitrum": "https://arb1.arbitrum.io/rpc/",
     "soneium": "https://rpc.soneium.org",
     "lisk": "https://rpc.api.lisk.com",
@@ -11,9 +9,11 @@ RPC_MAP = {
     "avalanche": "https://avalanche.drpc.org",
     "bsc": "https://bsc-dataseed2.bnbchain.org",
     "unichain": "https://0xrpc.io/uni",
-    "unichain": "https://rpc.therpc.io/unichain",
     "ink": "https://rpc-qnd.inkonchain.com",
     "mode": "https://mainnet.mode.network",
     "op_bnb": "https://opbnb-mainnet-rpc.bnbchain.org",
     "pharos": "https://testnet.dplabs-internal.com",
+    "gravity": "https://rpc.gravity.xyz",
+    "irys": "https://testnet-rpc.irys.xyz/v1/execution-rpc",
+    "linea": "https://rpc.linea.build",
 }
