@@ -4,6 +4,7 @@ import json
 import os
 import re
 import time
+from urllib.parse import parse_qs, urlparse
 
 from loguru import logger
 
@@ -426,139 +427,342 @@ class NeuraVerse:
             logger.error(f"{self.wallet} | Error — {e}")
             return []
 
-    async def get_twitter_link(self) -> str:
-        # Not working yet
-        return ""
-
+    async def get_twitter_link(self) -> tuple:
         if not self.privy.authentication:
             await self.privy.privy_authorize()
 
-        code_verifier = base64.urlsafe_b64encode(os.urandom(36)).decode().rstrip("=")
-        code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).decode().rstrip("=")
-        state_code = base64.urlsafe_b64encode(os.urandom(36)).decode().rstrip("=")
+        try:
+            logger.debug(f"{self.wallet} | Starting Twitter OAuth init flow")
 
-        logger.debug(f"{self.wallet} | Twitter PKCE generated | challenge={code_challenge}, state={state_code}")
+            code_verifier = base64.urlsafe_b64encode(os.urandom(36)).decode().rstrip("=")
+            code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).decode().rstrip("=")
+            state_code = base64.urlsafe_b64encode(os.urandom(36)).decode().rstrip("=")
 
-        payload = {
-            "provider": "twitter",
-            "redirect_to": "https://neuraverse.neuraprotocol.io/",
-            "code_challenge": code_challenge,
-            "state_code": state_code,
-        }
+            headers = {
+                **self.headers,
+                "privy-app-id": "cmbpempz2011ll10l7iucga14",
+                "privy-ca-id": self.privy.token_id,
+                "privy-client": "react-auth:2.25.0",
+                "privy-ui": "t",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
+                "sec-ch-ua-mobile": "?0",
+            }
 
-        headers = {
-            "accept": "application/json, text/plain, */*",
-            "accept-language": "ru,en;q=0.9",
-            "content-type": "application/json",
-            "priority": "u=1, i",
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-site",
-            "authorization": "Bearer eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Il9wWWZSYzMtSFJneE4xY1NYSThrOEVBdFgweXZOSUVnYXMtUHFPbHFMRk0ifQ.eyJzaWQiOiJjbWh2bHd6cHIwMDB2bGIwZGRnMnN1ZXU3IiwiaXNzIjoicHJpdnkuaW8iLCJpYXQiOjE3NjMwMTg5MTcsImF1ZCI6ImNtYnBlbXB6MjAxMWxsMTBsN2l1Y2dhMTQiLCJzdWIiOiJkaWQ6cHJpdnk6Y21ob3YyamE0MDE1M2xnMGNycXUweGZsaSIsImV4cCI6MTc2MzEwNTMxN30.h2aG5Q3E7WTvLcI9_MQh8qTni-wZnVaEr6RV3VNsm_t15loBL9LJkNf5G7MDpqFV5ZMOQxT1admMq0lVssS36g",
-            "privy-app-id": "cmbpempz2011ll10l7iucga14",
-            "privy-ca-id": "c787a08d-383c-4d26-b082-42510f2505d5",
-            "privy-client": "react-auth:2.25.0",
-            "origin": "https://neuraverse.neuraprotocol.io",
-            "referer": "https://neuraverse.neuraprotocol.io/",
-            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 YaBrowser/25.8.0.0 Safari/537.36",
-        }
+            payload = {
+                "provider": "twitter",
+                "redirect_to": "https://neuraverse.neuraprotocol.io/",
+                "code_challenge": code_challenge,
+                "state_code": state_code,
+            }
 
-        cookies = {
-            "privy-session": "privy.neuraprotocol.io",
-            "privy-token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Il9wWWZSYzMtSFJneE4xY1NYSThrOEVBdFgweXZOSUVnYXMtUHFPbHFMRk0ifQ.eyJzaWQiOiJjbWh2bHd6cHIwMDB2bGIwZGRnMnN1ZXU3IiwiaXNzIjoicHJpdnkuaW8iLCJpYXQiOjE3NjMwMTg5MTcsImF1ZCI6ImNtYnBlbXB6MjAxMWxsMTBsN2l1Y2dhMTQiLCJzdWIiOiJkaWQ6cHJpdnk6Y21ob3YyamE0MDE1M2xnMGNycXUweGZsaSIsImV4cCI6MTc2MzEwNTMxN30.h2aG5Q3E7WTvLcI9_MQh8qTni-wZnVaEr6RV3VNsm_t15loBL9LJkNf5G7MDpqFV5ZMOQxT1admMq0lVssS36g",
-            "privy-access-token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Il9wWWZSYzMtSFJneE4xY1NYSThrOEVBdFgweXZOSUVnYXMtUHFPbHFMRk0ifQ.eyJhaWQiOiJjbWJwZW1wejIwMTFsbDEwbDdpdWNnYTE0IiwiYXR0IjoicGF0Iiwic2lkIjoiY21odmx3enByMDAwdmxiMGRkZzJzdWV1NyIsImlzcyI6InByaXZ5LmlvIiwiaWF0IjoxNzYzMDE4OTE3LCJhdWQiOiJwcml2eS5uZXVyYXByb3RvY29sLmlvIiwic3ViIjoiZGlkOnByaXZ5OmNtaG92MmphNDAxNTNsZzBjcnF1MHhmbGkiLCJleHAiOjE3NjMxMDUzMTd9.yIeXOMvQSBImHWWi3pxzBhpdTIJhN1ojlJ3WmzoGG2iu452y1NQVwwboQ2CKrnNP6Y5kip-EM5hj9-l8avw2ZA",
-            "privy-refresh-token": "owM32zSMrkT-EjF8mdPUBV6OqwRR-VyXR8Dzfuy-H0KlnGEW5dfs4GnbMo_1mXbUqdnMP5j0Z4KF9eGIPexF8w",
-            "privy-id-token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Il9wWWZSYzMtSFJneE4xY1NYSThrOEVBdFgweXZOSUVnYXMtUHFPbHFMRk0ifQ.eyJjciI6IjE3NjI1MjAyODQiLCJsaW5rZWRfYWNjb3VudHMiOiJbe1widHlwZVwiOlwid2FsbGV0XCIsXCJhZGRyZXNzXCI6XCIweDVFNTEzNjJhQjA2M0IwN2U3ZmE0OEZmZmFiZjMzN2E1ZTY1YkM1NjlcIixcImNoYWluX3R5cGVcIjpcImV0aGVyZXVtXCIsXCJ3YWxsZXRfY2xpZW50X3R5cGVcIjpcIm1ldGFtYXNrXCIsXCJsdlwiOjE3NjMwMzQ4Mzd9LHtcImlkXCI6XCJmcm16ZGYya29ieHM4YWJ6aDl2aTlkeGxcIixcInR5cGVcIjpcIndhbGxldFwiLFwiYWRkcmVzc1wiOlwiMHg1NTU0QkM5YjQzMWI5NjY0NjFGNTcxZmJDMTFmOEZmNTkyMTk2OTRmXCIsXCJjaGFpbl90eXBlXCI6XCJldGhlcmV1bVwiLFwid2FsbGV0X2NsaWVudF90eXBlXCI6XCJwcml2eVwiLFwibHZcIjoxNzYyNTIwMjkwfV0iLCJpc3MiOiJwcml2eS5pbyIsImlhdCI6MTc2MzAzNjI4NiwiYXVkIjoiY21icGVtcHoyMDExbGwxMGw3aXVjZ2ExNCIsInN1YiI6ImRpZDpwcml2eTpjbWhvdjJqYTQwMTUzbGcwY3JxdTB4ZmxpIiwiZXhwIjoxNzYzMTIyNjg2fQ.liOJAkcHrJ_SN0UQk05TljtLpAu8uZ0oCZkqyiuN4sRCrfmyU4hnpJ2H1kNS6kytyPBGYVhwxGQRf-ZSEEs2bw",
-        }
+            cookies = {
+                k: v for k, v in (self.wallet.cookies or {}).items() if k in {"privy-token", "privy-id-token", "privy-session", "privy-access-token"}
+            }
 
-        logger.debug(f"{self.wallet} | Twitter OAuth init request -> url=https://privy.neuraprotocol.io/api/v1/oauth/init")
-        logger.debug(f"{self.wallet} | Twitter OAuth init headers: {headers}")
-        logger.debug(f"{self.wallet} | Twitter OAuth init cookies keys: {list(cookies.keys())}")
+            response = await self.session.post(
+                url="https://privy.neuraprotocol.io/api/v1/oauth/init",
+                cookies=cookies,
+                headers=headers,
+                json=payload,
+            )
 
-        response = await self.session.post(
-            url="https://privy.neuraprotocol.io/api/v1/oauth/init",
-            cookies=cookies,
-            headers=headers,
-            json=payload,
-        )
+            if response.status_code != 200:
+                logger.error(f"{self.wallet} | OAuth init failed ({response.status_code}). Body: {response.text}")
+                raise RuntimeError(f"OAuth init failed ({response.status_code})")
 
-        logger.debug(f"{self.wallet} | Twitter OAuth init response status: {response.status_code}")
-        logger.debug(f"{self.wallet} | Twitter OAuth init response text (trimmed): {response.text}")
+            data = response.json()
+            auth_url = data.get("url")
 
-        if response.status_code != 200:
-            logger.error(f"{self.wallet} | OAuth init failed ({response.status_code}). Body: {response.text}")
-            raise RuntimeError(f"OAuth init failed ({response.status_code})")
+            logger.debug(f"{self.wallet} | Twitter OAuth init parsed URL: {auth_url}")
 
-        data = response.json()
-        logger.debug(f"{self.wallet} | OAuth init response: {data}")
+            if not auth_url:
+                return ()
 
-        auth_url = data.get("url")
+            return auth_url, code_verifier
 
-        if not auth_url:
-            raise ValueError(f"Unable to find authorization URL in response: {data}")
+        except Exception as e:
+            logger.error(f"{self.wallet} | Error — {e}")
+            return ()
 
-        return auth_url
-
-    async def bind_twitter(self, callback: TwitterOauthData) -> bool:
-        # Not working yet
-        return False
-
+    async def bind_twitter(self, callback: TwitterOauthData, code_verifier: str) -> bool:
         if not self.privy.authentication:
             await self.privy.privy_authorize()
 
-        headers = {
-            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            "accept-language": "ru,en;q=0.9",
-            "priority": "u=0, i",
-            "referer": "https://x.com/",
-            "sec-ch-ua": '"Not)A;Brand";v="8", "Chromium";v="138", "YaBrowser";v="25.8", "Yowser";v="2.5"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"macOS"',
-            "sec-fetch-dest": "document",
-            "sec-fetch-mode": "navigate",
-            "sec-fetch-site": "cross-site",
-            "sec-fetch-user": "?1",
-            "upgrade-insecure-requests": "1",
-            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 YaBrowser/25.8.0.0 Safari/537.36",
-        }
+        try:
+            headers = {
+                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "accept-language": "ru,en;q=0.9",
+                "priority": "u=0, i",
+                "referer": "https://x.com/",
+                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
+                "sec-ch-ua-mobile": "?0",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+            }
 
-        logger.debug(f"{self.wallet} | Privy callback URL to call (no redirects): {callback.callback_url}")
+            response = await self.session.get(
+                url=callback.callback_url,
+                headers=headers,
+                allow_redirects=False,
+            )
 
-        response = await self.session.get(
-            url=callback.callback_url,
-            headers=headers,
-            allow_redirects=False,
-        )
+            if response.status_code != 307:
+                logger.error(f"{self.wallet} | OAuth init failed ({response.status_code}). Body: {response.text}")
+                raise RuntimeError(f"OAuth init failed ({response.status_code})")
 
-        logger.debug(f"{self.wallet} | First Privy callback response status: {response.status_code}")
-        logger.debug(f"{self.wallet} | First Privy callback text: {response.text}")
+            location = response.headers.get("location")
 
-        location = response.headers.get("location")
+            if not location:
+                logger.error(f"{self.wallet} | No Location header in Privy callback response, cannot continue Twitter bind")
+                return False
 
-        logger.debug(f"{self.wallet} | First Privy callback Location header: {location}")
-
-        if not location:
-            logger.error(f"{self.wallet} | No Location header in Privy callback response, cannot continue Twitter bind")
+        except Exception as e:
+            logger.error(f"{self.wallet} | Error — {e}")
             return False
 
-        cookies = {
-            "faucet_last_claim": '{"timestamp":1762789097408}',
-            "privy-session": "privy.neuraprotocol.io",
-            "privy-token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Il9wWWZSYzMtSFJneE4xY1NYSThrOEVBdFgweXZOSUVnYXMtUHFPbHFMRk0ifQ.eyJzaWQiOiJjbWh2bHd6cHIwMDB2bGIwZGRnMnN1ZXU3IiwiaXNzIjoicHJpdnkuaW8iLCJpYXQiOjE3NjMwMTg5MTcsImF1ZCI6ImNtYnBlbXB6MjAxMWxsMTBsN2l1Y2dhMTQiLCJzdWIiOiJkaWQ6cHJpdnk6Y21ob3YyamE0MDE1M2xnMGNycXUweGZsaSIsImV4cCI6MTc2MzEwNTMxN30.h2aG5Q3E7WTvLcI9_MQh8qTni-wZnVaEr6RV5VNsm_t15loBL9LJkNf5G7MDpqFV5ZMOQxT1admMq0lVssS36g",
-            "privy-id-token": "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6Il9wWWZSYzMtSFJneE4xY1NYSThrOEVBdFgweXZOSUVnYXMtUHFPbHFMRk0ifQ.eyJjciI6IjE3NjI1MjAyODQiLCJsaW5rZWRfYWNjb3VudHMiOiJbe1widHlwZVwiOlwid2FsbGV0XCIsXCJhZGRyZXNzXCI6XCIweDVFNTEzNjJhQjA2M0IwN2U3ZmE0OEZmZmFiZjMzN2E1ZTY1YkM1NjlcIixcImNoYWluX3R5cGVcIjpcImV0aGVyZXVtXCIsXCJ3YWxsZXRfY2xpZW50X3R5cGVcIjpcIm1ldGFtYXNrXCIsXCJsdlwiOjE3NjMwMzQ4Mzd9LHtcImlkXCI6XCJmcm16ZGYya29ieHM4YWJ6aDl2aTlkeGxcIixcInR5cGVcIjpcIndhbGxldFwiLFwiYWRkcmVzc1wiOlwiMHg1NTU0QkM5YjQzMWI5NjY0NjFGNTcxZmJDMTFmOEZmNTkyMTk2OTRmXCIsXCJjaGFpbl90eXBlXCI6XCJldGhlcmV1bVwiLFwid2FsbGV0X2NsaWVudF90eXBlXCI6XCJwcml2eVwiLFwibHZcIjoxNzYyNTIwMjkwfV0iLCJpc3MiOiJwcml2eS5pbyIsImlhdCI6MTc2MzA0MDQ1OCwiYXVkIjoiY21icGVtcHoyMDExbGwxMGw3aXVjZ2ExNCIsInN1YiI6ImRpZDpwcml2eTpjbWhvdjJqYTQwMTUzbGcwY3JxdTB4ZmxpIiwiZXhwIjoxNzYzMTI2ODU4fQ.eTvhU2HqMo3KRHbf_bJB2_4LaxM0da25rtOZGuGj20npgZzkv4WlS5G8P92YUDszuuxoWHgXSauz17LzPuyaDA",
-        }
+        try:
+            headers = {
+                **self.headers,
+                "privy-app-id": "cmbpempz2011ll10l7iucga14",
+                "privy-ca-id": self.privy.token_id,
+                "privy-client": "react-auth:2.25.0",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
+                "sec-ch-ua-mobile": "?0",
+            }
 
-        logger.info(f"{self.wallet} | Calling Neuraverse redirect URL from Location...")
-        response = await self.session.get(
-            url=location,
-            cookies=cookies,
-            headers=headers,
-        )
+            cookies = {
+                k: v
+                for k, v in (self.wallet.cookies or {}).items()
+                if k in {"privy-token", "privy-id-token", "privy-session", "privy-access-token", "privy-refresh-token"}
+            }
 
-        logger.debug(f"{self.wallet} | Neuraverse redirect response status: {response.status_code}")
+            parsed = urlparse(location)
+            params = parse_qs(parsed.query)
 
-        if response.status_code in (200, 301, 302):
-            logger.debug(f"{self.wallet} | Neuraverse/Twitter bind flow completed (browser-like redirect sequence)")
-            return True
+            authorization_code = params.get("privy_oauth_code", [None])[0]
+            state_code = params.get("privy_oauth_state", [None])[0]
 
-        raise Exception(f"Unexpected status from Neuraverse redirect: {response.status_code}")
+            if not authorization_code or not state_code:
+                logger.error(f"{self.wallet} | Missing privy_oauth_code/state in callback URL")
+                return False
+
+            payload = {
+                "authorization_code": authorization_code,
+                "state_code": state_code,
+                "code_verifier": code_verifier,
+            }
+
+            response = await self.session.post(url="https://privy.neuraprotocol.io/api/v1/oauth/link", cookies=cookies, headers=headers, json=payload)
+
+            if response.status_code != 200:
+                logger.error(f"{self.wallet} | OAuth init failed ({response.status_code}). Body: {response.text}")
+                raise RuntimeError(f"OAuth init failed ({response.status_code})")
+
+        except Exception as e:
+            logger.error(f"{self.wallet} | Error — {e}")
+            return False
+
+        try:
+            await self.privy.privy_authorize()
+
+            sync_headers = {
+                "accept": "application/json, text/plain, */*",
+                "accept-language": "ru,en;q=0.9",
+                "origin": "https://neuraverse.neuraprotocol.io",
+                "priority": "u=1, i",
+                "referer": "https://neuraverse.neuraprotocol.io/",
+                "sec-fetch-dest": "empty",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-site": "same-site",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
+                "sec-ch-ua-mobile": "?0",
+                "authorization": f"Bearer {self.wallet.identity_token}",
+            }
+
+            sync_response = await self.session.post(
+                url=f"{self.BASE_URL}/account/social/sync",
+                cookies=self.privy.cookies,
+                headers=sync_headers,
+            )
+
+            if sync_response.status_code != 200:
+                logger.error(f"{self.wallet} | Non-200 social sync response ({sync_response.status_code}). Body: {sync_response.text}")
+                raise RuntimeError(f"Non-200 social sync response ({sync_response.status_code})")
+
+        except Exception as e:
+            logger.error(f"{self.wallet} | Error — {e}")
+            return False
+
+        return True
+
+    async def get_discord_link(self) -> tuple:
+        if not self.privy.authentication:
+            await self.privy.privy_authorize()
+
+        try:
+            logger.debug(f"{self.wallet} | Starting Discord OAuth init flow")
+
+            code_verifier = base64.urlsafe_b64encode(os.urandom(36)).decode().rstrip("=")
+            code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier.encode()).digest()).decode().rstrip("=")
+            state_code = base64.urlsafe_b64encode(os.urandom(36)).decode().rstrip("=")
+
+            headers = {
+                **self.headers,
+                "privy-app-id": "cmbpempz2011ll10l7iucga14",
+                "privy-ca-id": self.privy.token_id,
+                "privy-client": "react-auth:2.25.0",
+                "privy-ui": "t",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
+                "sec-ch-ua-mobile": "?0",
+            }
+
+            payload = {
+                "provider": "discord",
+                "redirect_to": "https://neuraverse.neuraprotocol.io/",
+                "code_challenge": code_challenge,
+                "state_code": state_code,
+            }
+
+            cookies = {
+                k: v for k, v in (self.wallet.cookies or {}).items() if k in {"privy-token", "privy-id-token", "privy-session", "privy-access-token"}
+            }
+
+            response = await self.session.post(
+                url="https://privy.neuraprotocol.io/api/v1/oauth/init",
+                cookies=cookies,
+                headers=headers,
+                json=payload,
+            )
+
+            if response.status_code != 200:
+                logger.error(f"{self.wallet} | OAuth init failed ({response.status_code}). Body: {response.text}")
+                raise RuntimeError(f"OAuth init failed ({response.status_code})")
+
+            data = response.json()
+            auth_url = data.get("url")
+
+            logger.debug(f"{self.wallet} | Twitter OAuth init parsed URL: {auth_url}")
+
+            if not auth_url:
+                return ()
+
+            return auth_url, code_verifier
+
+        except Exception as e:
+            logger.error(f"{self.wallet} | Error — {e}")
+            return ()
+
+    async def bind_discord(self, callback: str, code_verifier: str) -> bool:
+        if not self.privy.authentication:
+            await self.privy.privy_authorize()
+
+        try:
+            headers = {
+                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "accept-language": "ru,en;q=0.9",
+                "priority": "u=0, i",
+                "referer": "https://x.com/",
+                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
+                "sec-ch-ua-mobile": "?0",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+            }
+
+            response = await self.session.get(
+                url=callback,
+                headers=headers,
+                allow_redirects=False,
+            )
+
+            if response.status_code != 307:
+                logger.error(f"{self.wallet} | OAuth init failed ({response.status_code}). Body: {response.text}")
+                raise RuntimeError(f"OAuth init failed ({response.status_code})")
+
+            location = response.headers.get("location")
+
+            if not location:
+                logger.error(f"{self.wallet} | No Location header in Privy callback response, cannot continue Twitter bind")
+                return False
+
+        except Exception as e:
+            logger.error(f"{self.wallet} | Error — {e}")
+            return False
+
+        try:
+            headers = {
+                **self.headers,
+                "privy-app-id": "cmbpempz2011ll10l7iucga14",
+                "privy-ca-id": self.privy.token_id,
+                "privy-client": "react-auth:2.25.0",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
+                "sec-ch-ua-mobile": "?0",
+            }
+
+            cookies = {
+                k: v
+                for k, v in (self.wallet.cookies or {}).items()
+                if k in {"privy-token", "privy-id-token", "privy-session", "privy-access-token", "privy-refresh-token"}
+            }
+
+            parsed = urlparse(location)
+            params = parse_qs(parsed.query)
+
+            authorization_code = params.get("privy_oauth_code", [None])[0]
+            state_code = params.get("privy_oauth_state", [None])[0]
+
+            if not authorization_code or not state_code:
+                logger.error(f"{self.wallet} | Missing privy_oauth_code/state in callback URL")
+                return False
+
+            payload = {
+                "authorization_code": authorization_code,
+                "state_code": state_code,
+                "code_verifier": code_verifier,
+            }
+
+            response = await self.session.post(url="https://privy.neuraprotocol.io/api/v1/oauth/link", cookies=cookies, headers=headers, json=payload)
+
+            if response.status_code != 200:
+                logger.error(f"{self.wallet} | OAuth init failed ({response.status_code}). Body: {response.text}")
+                raise RuntimeError(f"OAuth init failed ({response.status_code})")
+
+        except Exception as e:
+            logger.error(f"{self.wallet} | Error — {e}")
+            return False
+
+        try:
+            await self.privy.privy_authorize()
+
+            sync_headers = {
+                "accept": "application/json, text/plain, */*",
+                "accept-language": "ru,en;q=0.9",
+                "origin": "https://neuraverse.neuraprotocol.io",
+                "priority": "u=1, i",
+                "referer": "https://neuraverse.neuraprotocol.io/",
+                "sec-fetch-dest": "empty",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-site": "same-site",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
+                "sec-ch-ua-mobile": "?0",
+                "authorization": f"Bearer {self.wallet.identity_token}",
+            }
+
+            sync_response = await self.session.post(
+                url=f"{self.BASE_URL}/account/social/sync",
+                cookies=self.privy.cookies,
+                headers=sync_headers,
+            )
+
+            if sync_response.status_code != 200:
+                logger.error(f"{self.wallet} | Non-200 social sync response ({sync_response.status_code}). Body: {sync_response.text}")
+                raise RuntimeError(f"Non-200 social sync response ({sync_response.status_code})")
+
+        except Exception as e:
+            logger.error(f"{self.wallet} | Error — {e}")
+            return False
+
+        return True

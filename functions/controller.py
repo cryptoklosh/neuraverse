@@ -2,14 +2,15 @@ import asyncio
 import time
 import json
 import math
-from libs.base import Base
+import random
 from libs.eth_async.client import Client
 from modules.neuraverse import NeuraVerse
 from utils.db_api.models import Wallet
 from utils.twitter.twitter_client import TwitterClient
+from utils.discord.discord import DiscordOAuth
 from loguru import logger
 from data.settings import Settings
-import random
+
 from collections import Counter
 from modules.bridge import Bridge
 from libs.eth_async.data.models import Networks
@@ -22,6 +23,7 @@ from utils.db_api.wallet_api import update_wallet_info
 
 
 
+
 class Controller:
     def __init__(self, client: Client, wallet: Wallet, client_sepolia: Client = Client(network=Networks.Sepolia)):
         self.client = client
@@ -31,7 +33,6 @@ class Controller:
         self.bridge = Bridge(client_sepolia=client_sepolia, client=client, wallet=wallet)
         self.zotto = ZottoSwap(client=client, wallet=wallet)
         self.omnihub = OmnihubNFT(client=client, wallet=wallet)
-        self.twitter = TwitterClient(user=self.wallet)
 
     async def build_actions(self) -> list:
         try:
@@ -41,7 +42,8 @@ class Controller:
                     self.execute_zotto_swaps,
                     self.execute_auto_bridge,
                     self.run_ai_chat_session,
-                    self.mint_omnihub_nft 
+                    self.mint_omnihub_nft,
+                    self.connect_socials, 
                     ]
                  
             if await self.portal.privy.privy_authorize():
@@ -135,64 +137,108 @@ class Controller:
 
         return True
          
-    async def connect_twitter(self):
-        # Not working yet
-        return None
+    async def connect_twitter(self) -> bool:
         
-        autorisation_url = await self.portal.get_twitter_link()
-        
-        callback = await self.twitter.connect_twitter_to_site_oauth2(twitter_auth_url=autorisation_url)
-        await self.twitter.close()
-        
-        bind_twitter = await self.portal.bind_twitter(callback=callback)
-        
-        if bind_twitter:
-            return True
-
-        raise Exception(f"Failed Bind Twitter")
-    
-    async def connect_discord(self):
-        # TODO: Finish when we implement Twitter
-        return None
-    
-    async def connect_socials(self):
-        
-        # TODO Finish when we implement Twitter and Discord connection
-        return None
-        success = True
-        account_info = await self.portal.get_account_info()
-
-        if account_info is None:
-            raise Exception("Account info is None")
-        
-
-        if account_info["social_accounts"]["twitter"]["id"] == "" or account_info["social_accounts"]["discord"]["id"] == "":
+        try:
+            logger.info(f"{self.wallet} | Starting Twitter connect flow…")
             
-            logger.info(f"{self.wallet} | Starting connect socials...")
+            twitter = TwitterClient(user=self.wallet)
+
+            auth_url, code_verifier = await self.portal.get_twitter_link()
             
-            if account_info["social_accounts"]["twitter"]["id"] == "":
-                if not self.wallet.twitter_token:
-                    logger.error(f"{self.wallet} | Twitter token is None. Please add token to files/twitter_tokens.txt")
-                else:
-                    if not await self.connect_twitter():
-                        success = False
-            else:
-                logger.success(f"{self.wallet} | Twitter already connected")
+            callback = await twitter.connect_twitter_to_site_oauth2(twitter_auth_url=auth_url)
+            await twitter.close()
+            
+            bind_twitter = await self.portal.bind_twitter(callback=callback, code_verifier=code_verifier)
+            
+            if bind_twitter:
+                user_data = await self.portal.get_account_info()
+                social_accounts = user_data.get("socialAccounts", [])
+                
+                if social_accounts:
+                    for social in social_accounts:
+                        type = social.get('type', '')
+        
+                        if type == 'twitter':
+                            logger.success(f"{self.wallet} | Twitter successfully connected")
+                            return True
+                        
+            logger.error(f"{self.wallet} | Failed to connect Twitter")
+            return False
+        
+        except Exception as e:
+            logger.error(f"{self.wallet} | Error — {e}")
+            return False
+    
+    async def connect_discord(self) -> bool:
+        
+        try:
+            logger.info(f"{self.wallet} | Starting Discord connect flow…")
+            
+            guild_id = '1230647507428577332'
+            
+            discord = DiscordOAuth(wallet=self.wallet, guild_id=guild_id)
+            
+            auth_url, code_verifier = await self.portal.get_discord_link()
+            
+            callback, _ = await discord.start_oauth2(oauth_url=auth_url)
+            
+            bind_discrod = await self.portal.bind_discord(callback=callback, code_verifier=code_verifier)
+            
+            if bind_discrod:
+                user_data = await self.portal.get_account_info()
+                social_accounts = user_data.get("socialAccounts", [])
+                
+                if social_accounts:
+                    for social in social_accounts:
+                        type = social.get('type', '')
+        
+                        if type == 'discord':
+                            logger.success(f"{self.wallet} | Discord successfully connected")
+                            return True
+                        
+            logger.error(f"{self.wallet} | Failed to connect Discord")
+            return False
+        
+        except Exception as e:
+            logger.error(f"{self.wallet} | Error — {e}")
+            return False
+    
+    async def connect_socials(self) -> bool:
+        
+        try:
+            user_data = await self.portal.get_account_info()
+            
+            if not user_data:
+                logger.error(f"{self.wallet} | Failed to fetch account info in connect_socials")
+                return False
 
-            if account_info["social_accounts"]["discord"]["id"] == "":
-                if not self.wallet.discord_token:
-                    logger.error(f"{self.wallet} | Discord token is None. Please add token to files/discord_tokens.txt")
-                else:
-                    if not await self.connect_discord():
-                        success = False
-            else:
-                logger.success(f"{self.wallet} | Discord already connected")
+            social_accounts = user_data.get("socialAccounts", []) or []
+            
+            bound_types = {
+                social.get("type")
+                for social in social_accounts
+                if social.get("type")
+            }
 
-        if success:
-            logger.success(f"{self.wallet} | Successfully connected socials")
-        else:
-            logger.error(f"{self.wallet} | Failed to connect socials")
+            all_ok = True
 
+            if "twitter" not in bound_types:
+                
+                ok_twitter = await self.connect_twitter()
+                all_ok = all_ok and ok_twitter
+
+            if "discord" not in bound_types:
+                ok_discord = await self.connect_discord()
+                all_ok = all_ok and ok_discord
+
+
+            return all_ok
+
+        except Exception as e:
+            logger.error(f"{self.wallet} | Error in connect_socials — {e}")
+            return False
+        
     async def complete_quests(self) -> bool:
          
         try: 

@@ -23,10 +23,11 @@ class Wallet(Base):
     session_token: Mapped[str] = mapped_column(default=None, nullable=True)
     identity_token: Mapped[str] = mapped_column(default=None, nullable=True)
     cookies: Mapped[dict] = mapped_column(JSON, default={}, nullable=True)
-    discord_token: Mapped[str] = mapped_column(default=None, nullable=True)
     twitter_token: Mapped[str] = mapped_column(default=None, nullable=True)
     twitter_status: Mapped[str] = mapped_column(default="OK", nullable=True)
+    discord_token: Mapped[str] = mapped_column(default=None, nullable=True)
     discord_status: Mapped[str] = mapped_column(default=None, nullable=True)
+    discord_proxy: Mapped[str] = mapped_column(default=None, nullable=True)
 
     def __repr__(self):
         if Settings().show_wallet_address_logs:

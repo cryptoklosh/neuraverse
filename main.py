@@ -26,6 +26,7 @@ PROJECT_ACTIONS = [
     "5. Swaps",
     "6. Bridge",
     "7. Bridge Sepolia -> Neura(all ANKR)",
+    "8. Connect Socials",
     "Back",
 ]
 
@@ -103,6 +104,9 @@ async def choose_action():
 
     elif action == "7. Bridge Sepolia -> Neura(all ANKR)":
         await activity(action=7)
+
+    elif action == "8. Connect Socials":
+        await activity(action=8)
 
     elif action == "1. Reset files Folder":
         console.print("This action will delete the files folder and reset it.")

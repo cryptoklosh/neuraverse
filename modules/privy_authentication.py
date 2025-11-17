@@ -78,8 +78,13 @@ class PrivyAuth:
 
         payload = {"refresh_token": "deprecated"}
 
+        if self.wallet.identity_token:
+            headers = {**self.headers, "authorization": f"Bearer {self.wallet.identity_token}"}
+        else:
+            headers = self.headers
+
         try:
-            response = await self.session.post(url=f"{self.BASE_URL}/sessions", cookies=cookies, headers=self.headers, json=payload)
+            response = await self.session.post(url=f"{self.BASE_URL}/sessions", cookies=cookies, headers=headers, json=payload)
 
             if response.status_code != 200:
                 logger.error(f"{self.wallet} | Non-200 response ({response.status_code}). Body: {response.text}")
