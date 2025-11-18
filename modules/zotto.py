@@ -298,8 +298,8 @@ class ZottoSwap(Base):
             logger.debug(f"{self.wallet} | Swap executed successfully: {amount.Ether} {from_token.title} → {to_token.title}")
             return True
 
-        except Exception:
-            logger.error(f"{self.wallet} | Swap execution failed for {amount.Ether} {from_token.title} → {to_token.title}")
+        except Exception as e:
+            logger.exception(f"{self.wallet} | Swap execution failed for {amount.Ether} {from_token.title} → {to_token.title} — {e}")
             return False
 
     def _encode_swap_params(

@@ -89,28 +89,34 @@ async def activity(action: int):
     elif action == 4:
         await execute(
             wallets,
-            ai_talk,
+            faucet,
         )
 
     elif action == 5:
         await execute(
             wallets,
-            swaps,
+            ai_talk,
         )
 
     elif action == 6:
         await execute(
             wallets,
-            bridge,
+            swaps,
         )
 
     elif action == 7:
         await execute(
             wallets,
-            bridge_all_to_neura,
+            bridge,
         )
 
     elif action == 8:
+        await execute(
+            wallets,
+            bridge_all_to_neura,
+        )
+
+    elif action == 9:
         await execute(
             wallets,
             connect_socials,
@@ -184,6 +190,18 @@ async def update_points(wallet):
 
     try:
         await controller.update_db_by_user_info()
+    except Exception as e:
+        logger.error(f"Error — {e}")
+
+
+async def faucet(wallet):
+    await random_sleep_before_start(wallet=wallet)
+
+    client = Client(private_key=wallet.private_key, proxy=wallet.proxy, network=Networks.NeuraTestnet)
+    controller = Controller(client=client, wallet=wallet)
+
+    try:
+        await controller.faucet()
     except Exception as e:
         logger.error(f"Error — {e}")
 

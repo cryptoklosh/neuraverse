@@ -213,19 +213,13 @@ class NeuraVerse:
         try:
             logger.info(f"{self.wallet} | Starting faucet claim process")
 
-            headers = {
-                "sec-ch-ua-platform": '"Windows"',
-                "Referer": "https://neuraverse.neuraprotocol.io/?section=faucet",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
-                "sec-ch-ua-mobile": "?0",
-            }
+            headers = {"Referer": "https://neuraverse.neuraprotocol.io/?section=faucet"}
 
-            response = await self.session.get(url="https://neuraverse.neuraprotocol.io/_next/static/chunks/8571-6adecd311a93bda8.js", headers=headers)
+            response = await self.session.get(url="https://neuraverse.neuraprotocol.io/_next/static/chunks/2020-734a08c7739e0a73.js", headers=headers)
             logger.debug(f"{self.wallet} | Faucet JS chunk status: {response.status_code}")
 
             if response.status_code != 200:
-                logger.error(f"{self.wallet} | Non-200 response ({response.status_code}). Body: {response.text}")
+                logger.error(f"{self.wallet} | Non-200 JS chunk response in faucet ({response.status_code}). Body: {response.text}")
                 raise RuntimeError(f"Non-200 response ({response.status_code})")
 
             action_id = None
@@ -250,7 +244,6 @@ class NeuraVerse:
 
             headers = {
                 "accept": "text/x-component",
-                "accept-language": "en-US,en;q=0.9,ru;q=0.8,zh-TW;q=0.7,zh;q=0.6,uk;q=0.5",
                 "content-type": "text/plain;charset=UTF-8",
                 "next-action": action_id,
                 "next-router-state-tree": "%5B%22%22%2C%7B%22children%22%3A%5B%22__PAGE__%22%2C%7B%7D%2Cnull%2Cnull%5D%7D%2Cnull%2Cnull%2Ctrue%5D",
@@ -311,7 +304,7 @@ class NeuraVerse:
                 )
 
             else:
-                logger.error(f"{self.wallet} | Faucet response did not match any known substrings; raw text (trimmed): {response.text[:600]}")
+                logger.error(f"{self.wallet} | Faucet response did not match any known substrings: {response.text[:600]}")
                 return False
 
         except Exception as e:
@@ -321,16 +314,8 @@ class NeuraVerse:
         try:
             logger.info(f"{self.wallet} | Sending faucet event POST to {self.BASE_URL}/events")
 
-            event_headers = {
-                "accept": "application/json, text/plain, */*",
-                "authorization": f"Bearer {self.wallet.identity_token}",
-                "content-type": "application/json",
-                "origin": "https://neuraverse.neuraprotocol.io",
-                "referer": "https://neuraverse.neuraprotocol.io/",
-            }
-
             event_response = await self.session.post(
-                url=f"{self.BASE_URL}/events", cookies=self.privy.cookies, headers=event_headers, json={"type": "faucet:claimTokens"}
+                url=f"{self.BASE_URL}/events", cookies=self.privy.cookies, headers=self.headers, json={"type": "faucet:claimTokens"}
             )
 
             if event_response.status_code != 200:
@@ -444,9 +429,6 @@ class NeuraVerse:
                 "privy-ca-id": self.privy.token_id,
                 "privy-client": "react-auth:2.25.0",
                 "privy-ui": "t",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
-                "sec-ch-ua-mobile": "?0",
             }
 
             payload = {
@@ -495,9 +477,6 @@ class NeuraVerse:
                 "accept-language": "ru,en;q=0.9",
                 "priority": "u=0, i",
                 "referer": "https://x.com/",
-                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
-                "sec-ch-ua-mobile": "?0",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
             }
 
             response = await self.session.get(
@@ -526,9 +505,6 @@ class NeuraVerse:
                 "privy-app-id": "cmbpempz2011ll10l7iucga14",
                 "privy-ca-id": self.privy.token_id,
                 "privy-client": "react-auth:2.25.0",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
-                "sec-ch-ua-mobile": "?0",
             }
 
             cookies = {
@@ -566,25 +542,12 @@ class NeuraVerse:
         try:
             await self.privy.privy_authorize()
 
-            sync_headers = {
-                "accept": "application/json, text/plain, */*",
-                "accept-language": "ru,en;q=0.9",
-                "origin": "https://neuraverse.neuraprotocol.io",
-                "priority": "u=1, i",
-                "referer": "https://neuraverse.neuraprotocol.io/",
-                "sec-fetch-dest": "empty",
-                "sec-fetch-mode": "cors",
-                "sec-fetch-site": "same-site",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
-                "sec-ch-ua-mobile": "?0",
-                "authorization": f"Bearer {self.wallet.identity_token}",
-            }
+            headers = {k: v for k, v in self.headers.items() if k.lower() != "content-type"}
 
             sync_response = await self.session.post(
                 url=f"{self.BASE_URL}/account/social/sync",
                 cookies=self.privy.cookies,
-                headers=sync_headers,
+                headers=headers,
             )
 
             if sync_response.status_code != 200:
@@ -614,9 +577,6 @@ class NeuraVerse:
                 "privy-ca-id": self.privy.token_id,
                 "privy-client": "react-auth:2.25.0",
                 "privy-ui": "t",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
-                "sec-ch-ua-mobile": "?0",
             }
 
             payload = {
@@ -662,12 +622,8 @@ class NeuraVerse:
         try:
             headers = {
                 "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                "accept-language": "ru,en;q=0.9",
                 "priority": "u=0, i",
                 "referer": "https://x.com/",
-                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
-                "sec-ch-ua-mobile": "?0",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
             }
 
             response = await self.session.get(
@@ -696,9 +652,6 @@ class NeuraVerse:
                 "privy-app-id": "cmbpempz2011ll10l7iucga14",
                 "privy-ca-id": self.privy.token_id,
                 "privy-client": "react-auth:2.25.0",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
-                "sec-ch-ua-mobile": "?0",
             }
 
             cookies = {
@@ -736,25 +689,12 @@ class NeuraVerse:
         try:
             await self.privy.privy_authorize()
 
-            sync_headers = {
-                "accept": "application/json, text/plain, */*",
-                "accept-language": "ru,en;q=0.9",
-                "origin": "https://neuraverse.neuraprotocol.io",
-                "priority": "u=1, i",
-                "referer": "https://neuraverse.neuraprotocol.io/",
-                "sec-fetch-dest": "empty",
-                "sec-fetch-mode": "cors",
-                "sec-fetch-site": "same-site",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
-                "sec-ch-ua": '"Chromium";v="142", "Google Chrome";v="142", "Not_A Brand";v="99"',
-                "sec-ch-ua-mobile": "?0",
-                "authorization": f"Bearer {self.wallet.identity_token}",
-            }
+            headers = {k: v for k, v in self.headers.items() if k.lower() != "content-type"}
 
             sync_response = await self.session.post(
                 url=f"{self.BASE_URL}/account/social/sync",
                 cookies=self.privy.cookies,
-                headers=sync_headers,
+                headers=headers,
             )
 
             if sync_response.status_code != 200:

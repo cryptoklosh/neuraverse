@@ -100,8 +100,7 @@ class Controller:
         except Exception as e:
             logger.error(f"{self.wallet} | Error — {e}")
             return []
-                 
-        
+                   
     async def update_db_by_user_info(self) -> bool:
         
         user_data = await self.portal.get_account_info()
@@ -242,7 +241,6 @@ class Controller:
     async def complete_quests(self) -> bool:
          
         try: 
-            
             logger.info(f"{self.wallet} | Starting quest processing...")
             
             all_quests = await self.portal.get_all_quests()
@@ -338,8 +336,8 @@ class Controller:
                     total_complete_errors += 1
                     continue
 
-            logger.success(
-                f"[{self.wallet}] | Quest results — claimed: {total_quest_claimed}, completed: {total_quest_completed}, "
+            logger.info(
+                f"{self.wallet} | Quest results — claimed: {total_quest_claimed}, completed: {total_quest_completed}, "
                 f"claim errors: {total_claim_errors}, complete errors: {total_complete_errors}"
             )
 
@@ -451,7 +449,7 @@ class Controller:
                         pulse_id = (pulse.get("id") or "").replace("pulse:", "")
                         if pulse_id:
                             remaining.append(pulse)
-                logger.error(f"{self.wallet} | Not all pulses collected — remaining ({len(remaining)}): [{', '.join(remaining)}]")
+                logger.error(f"{self.wallet} | Not all pulses collected — remaining: {remaining}")
                 return False
 
             logger.success(f"{self.wallet} | All pulses collected successfully ({len(pulse_list)} total)")
@@ -477,6 +475,9 @@ class Controller:
                 return False
 
             limit = random.randint(self.settings.ai_chat_count_min, self.settings.ai_chat_count_max)
+            
+            if limit == 0:
+                return True
 
             attempts = 0
             completed = 0
@@ -513,7 +514,7 @@ class Controller:
                     logger.info(f"{self.wallet} | Next AI message in {random_sleep}s")
                     await asyncio.sleep(random_sleep)
                     
-            logger.success(f"{self.wallet} | AI chat session finished: {completed}/{limit}") 
+            logger.info(f"{self.wallet} | AI chat session finished: {completed}/{limit}") 
             return True
                     
         except Exception as e:
@@ -522,24 +523,25 @@ class Controller:
                             
     async def execute_auto_bridge(self, bridge_all_to_neura: bool = False) -> bool:
         try:
-            await self.portal.visit_location("bridge:visit")
             
             if bridge_all_to_neura:
                 logger.info(f"{self.wallet} | Starting full Sepolia → Neura bridge...")
+                await self.portal.visit_location("bridge:visit")
                 sucsess = await self.bridge._bridge_sepolia_to_neura_all()
                 
                 if sucsess:
                     return True
                 else:
                     return False
-                        
-            if not self.settings.use_bridge:
-                logger.warning(f"{self.wallet} | Bridge disabled in settings — skipping auto bridge")
-                return False
-            
+                           
             else:
                 total_bridge = random.randint(self.settings.bridge_count_min, self.settings.bridge_count_max)
+                
+                if total_bridge == 0:
+                    return True
 
+                await self.portal.visit_location("bridge:visit")
+                
                 directions = ["neura_to_sepolia", "sepolia_to_neura"]
 
                 attempts = 0
@@ -591,14 +593,14 @@ class Controller:
                             
                         completed += 1
                 
-                logger.success(f"{self.wallet} | Auto-bridge session completed: {completed}/{total_bridge}")
+                logger.info(f"{self.wallet} | Auto-bridge session completed: {completed}/{total_bridge}")
                 return True
              
         except Exception as e:
             logger.error(f"{self.wallet} | Error — {e}")
             return False
                                                         
-    async def claim_pending_sepolia_bridges(self, wait_ms: int = 60000, page: int = 1, limit: int = 20) -> bool:
+    async def claim_pending_sepolia_bridges(self, wait_ms: int = 60000) -> bool:
         
         try:
             logger.info(f"{self.wallet} | Checking validated Sepolia bridge claims…")
@@ -682,8 +684,6 @@ class Controller:
             
             logger.info(f"{self.wallet} | Starting Zotto auto-swap cycle…")
             
-            
-
             tokens_list = await self.zotto.get_available_token_contracts()
             random.shuffle(tokens_list)
 
@@ -692,6 +692,9 @@ class Controller:
                 return False
 
             total_swaps = random.randint(self.settings.swaps_count_min, self.settings.swaps_count_max)
+            
+            if total_swaps == 0:
+                return True
 
             attempts = 0 
             completed = 0
@@ -842,7 +845,7 @@ class Controller:
                     attempts += 1
                     continue
 
-            logger.success(f"{self.wallet} | Zotto swap cycle completed: {completed}/{total_swaps}")
+            logger.info(f"{self.wallet} | Zotto swap cycle completed: {completed}/{total_swaps}")
             return True
         
         except Exception as e:

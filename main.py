@@ -22,11 +22,12 @@ PROJECT_ACTIONS = [
     "1. Random Activity",
     "2. Neura portal tasks",
     "3. Update points",
-    "4. AI Talk",
-    "5. Swaps",
-    "6. Bridge",
-    "7. Bridge Sepolia -> Neura(all ANKR)",
-    "8. Connect Socials",
+    "4. Faucet",
+    "5. AI Talk",
+    "6. Swaps",
+    "7. Bridge",
+    "8. Bridge Sepolia -> Neura(all ANKR)",
+    "9. Connect Socials",
     "Back",
 ]
 
@@ -93,20 +94,23 @@ async def choose_action():
     elif action == "3. Update points":
         await activity(action=3)
 
-    elif action == "4. AI Talk":
+    elif action == "4. Faucet":
         await activity(action=4)
 
-    elif action == "5. Swaps":
+    elif action == "5. AI Talk":
         await activity(action=5)
 
-    elif action == "6. Bridge":
+    elif action == "6. Swaps":
         await activity(action=6)
 
-    elif action == "7. Bridge Sepolia -> Neura(all ANKR)":
+    elif action == "7. Bridge":
         await activity(action=7)
 
-    elif action == "8. Connect Socials":
+    elif action == "8. Bridge Sepolia -> Neura(all ANKR)":
         await activity(action=8)
+
+    elif action == "9. Connect Socials":
+        await activity(action=9)
 
     elif action == "1. Reset files Folder":
         console.print("This action will delete the files folder and reset it.")

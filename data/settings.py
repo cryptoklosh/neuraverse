@@ -36,9 +36,8 @@ class Settings(Singleton):
 
         self.bridge_count_min = json_data.get("bridge_count", {}).get("min")
         self.bridge_count_max = json_data.get("bridge_count", {}).get("max")
-        self.brige_percet_min = json_data.get("brige_percet", {}).get("min")
-        self.brige_percet_max = json_data.get("brige_percet", {}).get("max")
-        self.use_bridge = json_data.get("use_bridge", True)
+        self.brige_percet_min = json_data.get("bridge_percet", {}).get("min")
+        self.brige_percet_max = json_data.get("bridge_percet", {}).get("max")
 
         self.ai_chat_count_min = json_data.get("ai_chat_count", {}).get("min")
         self.ai_chat_count_max = json_data.get("ai_chat_count", {}).get("max")

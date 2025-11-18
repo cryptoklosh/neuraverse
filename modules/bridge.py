@@ -1,5 +1,6 @@
 import asyncio
 import random
+import time
 
 from loguru import logger
 from web3.types import TxParams
@@ -24,12 +25,38 @@ class Bridge(Base):
         self.settings = Settings()
         self.session = Browser()
 
-    async def bridge_neura_to_sepolia(self, amount_eth: TokenAmount) -> bool:
+    async def bridge_neura_to_sepolia(self, amount_eth: TokenAmount, max_gas_price: int) -> bool:
         try:
+            logger.debug(f"{self.wallet} | Bridging {amount_eth.Ether} ANKR from Neura → Sepolia...")
+
             if amount_eth.Ether <= 0:
                 raise Exception(f"Invalid amount: {amount_eth.Ether}")
 
-            logger.debug(f"{self.wallet} | Bridging {amount_eth.Ether} ANKR from Neura → Sepolia...")
+            if max_gas_price:
+                gas_price = await self.client.transactions.gas_price()
+                logger.debug(f"{self.wallet} | DEBUG: initial gas price — {gas_price.Gwei} gwei")
+
+                if gas_price.Gwei > max_gas_price:
+                    logger.warning(f"{self.wallet} | High gas price detected: {gas_price.Gwei} gwei")
+
+                    wait_start = time.time()
+                    while gas_price.Gwei > max_gas_price:
+                        elapsed = time.time() - wait_start
+                        if elapsed >= 120:
+                            logger.warning(
+                                f"{self.wallet} | Gas did not drop below {max_gas_price} gwei within 120s "
+                                f"(last observed {gas_price.Gwei} gwei) — aborting swap"
+                            )
+                            return False
+                        sleep = random.randint(20, 60)
+                        logger.debug(f"{self.wallet} | DEBUG: gas still high ({gas_price.Gwei} gwei), sleeping {sleep}s (elapsed {int(elapsed)}s)")
+                        await asyncio.sleep(sleep)
+                        gas_price = await self.client.transactions.gas_price()
+                        logger.debug(f"{self.wallet} | DEBUG: refreshed gas price — {gas_price.Gwei} gwei")
+
+                    logger.info(f"{self.wallet} | Gas normalized below threshold: {gas_price.Gwei} gwei — continuing execution")
+                else:
+                    logger.debug(f"{self.wallet} | DEBUG: gas price acceptable — {gas_price.Gwei} gwei")
 
             bridge_contract = await self.client.contracts.get(Contracts.NEURA_BRIDGE)
 
@@ -178,9 +205,11 @@ class Bridge(Base):
                 logger.warning(f"{self.wallet} | Bridge amount too small: {bridge_amount.Ether}")
                 return False
 
+            max_gas_price = self.settings.max_gas_price
+
             logger.info(f"{self.wallet} | Bridging {bridge_amount.Ether} ANKR from Neura → Sepolia")
 
-            sucsess = await self.bridge_neura_to_sepolia(amount_eth=bridge_amount)
+            sucsess = await self.bridge_neura_to_sepolia(amount_eth=bridge_amount, max_gas_price=max_gas_price)
 
             random_sleep = random.randint(
                 self.settings.random_pause_between_actions_min,

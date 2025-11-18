@@ -32,7 +32,7 @@ log_level: INFO
 min_native_balance: 1
 
 # Maximum gas price allowed for execution (in Gwei)
-max_gas_price: 700
+max_gas_price: 2500
 
 # Delay before running the same wallet again after it has completed all actions (5 - 8 hrs default)
 random_pause_wallet_after_completion:
@@ -61,12 +61,9 @@ swaps_count:
 
 # Onchain Swaps percent
 swaps_percent:
-  min: 30
+  min: 25
   max: 50
   
-# Whether to use bridge functionality in the workflow
-use_bridge: true
-
 # Onchaun Bridge percent
 bridge_percet:
   min: 10
