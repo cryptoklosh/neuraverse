@@ -783,6 +783,10 @@ class Controller:
                                 )
                                 await asyncio.sleep(random_sleep)
                                 continue
+                            
+                        if native_balance.Ether < min_native_balace:
+                            break
+                        
                         continue
 
                     else:

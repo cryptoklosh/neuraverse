@@ -62,7 +62,7 @@ class Bridge(Base):
 
             tx_params = TxArgs(_recipient=self.client.account.address, _chainId=Networks.Sepolia.chain_id).tuple()
 
-            data = await bridge_contract.encode_abi("deposit", args=tx_params)
+            data = bridge_contract.encode_abi("deposit", args=tx_params)
 
             transaction = await self.client.transactions.sign_and_send(TxParams(to=bridge_contract.address, data=data, value=amount_eth.Wei))
             recipient = await transaction.wait_for_receipt(client=self.client, timeout=300)
@@ -133,7 +133,7 @@ class Bridge(Base):
 
             tx_params = TxArgs(assets=amount_eth.Wei, receiver=self.client.account.address).tuple()
 
-            data = await bridge_contract.encode_abi("deposit", args=tx_params)
+            data = bridge_contract.encode_abi("deposit", args=tx_params)
 
             transaction = await self.client.transactions.sign_and_send(TxParams(to=bridge_contract.address, data=data, value=amount_eth.Wei))
             recipient = await transaction.wait_for_receipt(client=self.client, timeout=300)
