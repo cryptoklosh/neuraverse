@@ -64,7 +64,7 @@ class Controller:
                         can_use_faucet = True
 
                 if can_use_faucet:
-                    actions.append(self.faucet)
+                    await self.faucet()
 
                 wallet_balance = await self.client.wallet.balance()
                 
@@ -722,14 +722,23 @@ class Controller:
                     break
 
                 native_balance = await self.client.wallet.balance()
-                min_native_balace = self.settings.min_native_balance
+                min_native_balance = self.settings.min_native_balance
+                
+                if native_balance.Ether < 0.15:
+                    logger.warning(
+                        f"{self.wallet} | Native balance critically low ({native_balance.Ether} ANKR < 0.15 ANKR), stopping Zotto swaps"
+                    )
+                    break
 
                 try:
-                    if native_balance.Ether < min_native_balace:
+                    if native_balance.Ether < min_native_balance:
                         
-                        logger.warning(f"{self.wallet} | Native balance low: {native_balance.Ether} ANRK (min required: {min_native_balace} ANRK)")
+                        logger.warning(f"{self.wallet} | Native balance low: {native_balance.Ether} ANRK (min required: {min_native_balance} ANRK)")
 
-                        while native_balance.Ether < min_native_balace and attempts < max_fail_attempts:
+                        while native_balance.Ether < min_native_balance and attempts < max_fail_attempts:
+                            
+                            if native_balance.Ether < 0.15:
+                                break
                             
                             spendables = [token for token in candidates_with_balance if token.address != Contracts.ANKR.address]
 
@@ -738,7 +747,13 @@ class Controller:
                                 break
 
                             from_token = random.choice(spendables)
-                
+                            
+                            tokens_price = await self.zotto.get_pool_prices_if_liquid(token_0=from_token, token_1=Contracts.ANKR)
+
+                            if not tokens_price:
+                                attempts += 1
+                                continue
+                            
                             precision = random.randint(2, 4)
                             percent = randfloat(from_=self.settings.swaps_percent_min, to_=self.settings.swaps_percent_max, step=0.001) / 100
                             raw_amount = float(all_token_balances[from_token.address].Ether) * percent
@@ -756,6 +771,7 @@ class Controller:
                                 from_token=from_token,
                                 to_token=Contracts.ANKR,
                                 amount=swap_amount,
+                                tokens_price=tokens_price
                             )
                             
                             random_sleep = random.randint(
@@ -773,9 +789,12 @@ class Controller:
                                 )
                                 await asyncio.sleep(random_sleep)
                                 
+                                if completed >= total_swaps:
+                                    break
+                                
                                 native_balance = await self.client.wallet.balance()
                                 all_token_balances[from_token.address] = await self.client.wallet.balance(from_token)
-                                all_token_balances[Contracts.ANKR.address] = await self.client.wallet.balance()
+                                all_token_balances[Contracts.ANKR.address] = native_balance
                                 
                                 if from_token in candidates_with_balance:
                                     candidates_with_balance.remove(from_token)
