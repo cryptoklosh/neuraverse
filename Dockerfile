@@ -1,5 +1,7 @@
 FROM python:3.14-slim
-WORKDIR /app
+WORKDIR /root
+RUN apt-get update && \
+    apt-get install -y libxml2-dev libxslt-dev python-dev
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
