@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM python:3.14
 WORKDIR /root
 RUN apt-get update && \
     apt-get install -y libxml2-dev libxslt-dev
