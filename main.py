@@ -1,5 +1,5 @@
-import os
 import asyncio
+import os
 import platform
 
 import inquirer
@@ -76,7 +76,7 @@ async def choose_action():
     # act_answer = inquirer.prompt(act_question, theme=themes.Default())
     # action = act_answer["action"]
 
-    acrion = os.environ['ACTION']
+    action = os.environ["ACTION"]
 
     if action == "Import wallets to Database":
         # console.print(f"[bold blue]Starting Import Wallets to DB[/bold blue]")
@@ -120,7 +120,7 @@ async def choose_action():
         # answer = input("Are you sure you want to perform this action? y/N ")
         # if answer.lower() == "y":
         reset_folder()
-            # console.print("Files folder success reset")
+        # console.print("Files folder success reset")
 
     elif action == "Exit":
         # console.print(f"[bold red]Exiting {PROJECT_NAME}...[/bold red]")
@@ -134,7 +134,7 @@ async def main():
     create_files()
     migrate()
 
-    await check_for_updates(repo_name=PROJECT_NAME)
+    # await check_for_updates(repo_name=PROJECT_NAME)
     await choose_action()
 
 
@@ -142,6 +142,6 @@ if __name__ == "__main__":
     # show_channel_info(PROJECT_NAME)
 
     # if platform.system() == "Windows":
-        # asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    # asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
     asyncio.run(main())
