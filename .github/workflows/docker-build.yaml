@@ -23,7 +23,7 @@ jobs:
         with:
           push: true
           context: .
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           tags: ${{ vars.AWS_REGISTRY_URL }}/node-neura:${{ inputs.tag }}
           cache-from: type=registry,ref=${{ vars.AWS_REGISTRY_URL }}/node-neura:cache
           cache-to: type=registry,ref=${{ vars.AWS_REGISTRY_URL }}/node-neura:cache,compression=zstd,mode=max
